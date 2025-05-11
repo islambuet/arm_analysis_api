@@ -14,9 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
         apiPrefix: 'api',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        $middleware->appendToGroup('logged-user', [
-            loggedUser::class
-        ]);
+        $middleware->alias(['logged-user' =>loggedUser::class]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

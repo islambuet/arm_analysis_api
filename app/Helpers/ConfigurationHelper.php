@@ -4,11 +4,15 @@
     class ConfigurationHelper
     {
         public static $config = array();
+        public static $config_loaded = false;
         public static function load_config()
         {
-            $results = DB::table(TABLE_CONFIGURATIONS)->where('status', SYSTEM_STATUS_ACTIVE)->get();
-            foreach($results as $result){
-                self::$config[$result->purpose]=$result->config_value;
+            if(!self::$config_loaded){
+                $results = DB::table(TABLE_CONFIGURATIONS)->where('status', SYSTEM_STATUS_ACTIVE)->get();
+                foreach($results as $result){
+                    self::$config[$result->purpose]=$result->config_value;
+                }
+                self::$config_loaded=true;
             }
         }
         public static function isApiOffline(): bool
