@@ -11,8 +11,8 @@ Route::middleware('logged-user')->group(function()use ($url,$controllerClass){
     Route::match(['GET','POST'],$url.'/{analysisYearId}/get-item/{itemId}', [$controllerClass, 'getItem']);
     Route::post($url.'/save-item', [$controllerClass, 'saveItem']);
 });
-$url='research/crop_business_team';
-$controllerClass= Controllers\research\CropBusinessTeamController::class;
+$url='research/sales_distributors';
+$controllerClass= Controllers\research\SalesDistributorsController::class;
 /** @noinspection DuplicatedCode */
 Route::middleware('logged-user')->group(function()use ($url,$controllerClass){
     Route::match(['GET','POST'],$url.'/initialize', [$controllerClass, 'initialize']);

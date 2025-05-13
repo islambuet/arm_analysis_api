@@ -12,9 +12,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 
-class CropBusinessTeamController extends RootController
+class SalesDistributorsController extends RootController
 {
-    public $api_url = 'research/crop_business_team';
+    public $api_url = 'research/sales_distributors';
     public $permissions;
 
     public function __construct()
@@ -26,52 +26,53 @@ class CropBusinessTeamController extends RootController
     public function initialize(): JsonResponse
     {
         if ($this->permissions->action_0 == 1) {
-            $crops = DB::table(TABLE_CROPS)
+            $response = [];
+            $response['error'] ='';
+            $response['permissions']=$this->permissions;
+            $response['hidden_columns']=TaskHelper::getHiddenColumns($this->api_url,$this->user);
+            $response['location_parts'] = DB::table(TABLE_LOCATION_PARTS)
+                ->select('id', 'name')
+                ->orderBy('name', 'ASC')
+                ->where('status', SYSTEM_STATUS_ACTIVE)
+                ->get();
+            $response['location_areas'] = DB::table(TABLE_LOCATION_AREAS)
+                ->select('id', 'name','part_id')
+                ->orderBy('name', 'ASC')
+                ->where('status', SYSTEM_STATUS_ACTIVE)
+                ->get();
+            $response['location_territories'] = DB::table(TABLE_LOCATION_TERRITORIES)
+                ->select('id', 'name','area_id')
+                ->orderBy('name', 'ASC')
+                ->where('status', SYSTEM_STATUS_ACTIVE)
+                ->get();
+            $response['distributors'] = DB::table(TABLE_DISTRIBUTORS)
+                ->select('id', 'name','territory_id')
+                ->orderBy('name', 'ASC')
+                ->where('status', SYSTEM_STATUS_ACTIVE)
+                ->get();
+            $response['crops']  = DB::table(TABLE_CROPS)
                 ->select('id', 'name')
                 ->orderBy('ordering', 'ASC')
                 ->where('status', SYSTEM_STATUS_ACTIVE)
                 ->get();
-            $crop_types2 = DB::table(TABLE_CROP_TYPES2)
+            $response['crop_types'] = DB::table(TABLE_CROP_TYPES)
                 ->select('id', 'name','crop_id')
                 ->orderBy('ordering', 'ASC')
                 ->where('status', SYSTEM_STATUS_ACTIVE)
                 ->get();
-            $competitor_varieties = DB::table(TABLE_VARIETIES2)
-                ->select('id', 'name')
+            $response['varieties'] = DB::table(TABLE_VARIETIES)
+                ->select('id', 'name','crop_type_id')
                 ->orderBy('ordering', 'ASC')
-                ->where('competitor_id', '>',0)
+                ->where('status', SYSTEM_STATUS_ACTIVE)
+                ->where('whose', 'ARM')
+                ->get();
+            $response['pack_sizes'] = DB::table(TABLE_PACK_SIZES)
+                ->select('id', 'name','variety_id')
+                ->orderBy('ordering', 'ASC')
                 ->where('status', SYSTEM_STATUS_ACTIVE)
                 ->get();
+            return response()->json($response);
 
-            $location_parts = DB::table(TABLE_LOCATION_PARTS)
-                ->select('id', 'name')
-                ->orderBy('ordering', 'ASC')
-                ->where('status', SYSTEM_STATUS_ACTIVE)
-                ->get();
-            $location_areas = DB::table(TABLE_LOCATION_AREAS)
-                ->select('id', 'name','part_id')
-                ->orderBy('ordering', 'ASC')
-                ->where('status', SYSTEM_STATUS_ACTIVE)
-                ->get();
-            $location_territories = DB::table(TABLE_LOCATION_TERRITORIES)
-                ->select('id', 'name','area_id')
-                ->orderBy('ordering', 'ASC')
-                ->where('status', SYSTEM_STATUS_ACTIVE)
-                ->get();
-            $user_locations=['part_id'=>$this->user->part_id,'area_id'=>$this->user->area_id,'territory_id'=>$this->user->territory_id];
-
-            return response()->json([
-                'error'=>'','permissions'=>$this->permissions,
-                'hidden_columns'=>TaskHelper::getHiddenColumns($this->api_url,$this->user),
-                'user_locations'=>$user_locations,
-                'crops'=>$crops,
-                'crop_types2'=>$crop_types2,
-                'competitor_varieties'=>$competitor_varieties,
-                'location_parts'=>$location_parts,
-                'location_areas'=>$location_areas,
-                'location_territories'=>$location_territories,
-
-            ]);
         } else {
             return response()->json(['error' => 'ACCESS_DENIED', 'messages' => __('You do not have access on this page')]);
         }
@@ -81,20 +82,28 @@ class CropBusinessTeamController extends RootController
     {
         if ($this->permissions->action_0 == 1) {
             $perPage = $request->input('perPage', 50);
-            //$query=DB::table(TABLE_CROP_TYPES2);
-            $query=DB::table(TABLE_RESEARCH_CROPS.' as rc');
-            $query->select('rc.*');
-            $query->join(TABLE_CROP_TYPES2.' as crop_types2', 'crop_types2.id', '=', 'rc.crop_type2_id');
-            $query->addSelect('crop_types2.name as crop_type2_name');
-            $query->join(TABLE_CROPS.' as crops', 'crops.id', '=', 'crop_types2.crop_id');
-            $query->addSelect('crops.name as crop_name');
-            $query->join(TABLE_LOCATION_TERRITORIES.' as territories', 'territories.id', '=', 'rc.territory_id');
+            //$query=DB::table(TABLE_CROP_TYPES);
+            $query=DB::table(TABLE_SALES_DISTRIBUTORS.' as sd');
+            $query->select('sd.*');
+            $query->join(TABLE_DISTRIBUTORS.' as d', 'd.id', '=', 'sd.distributor_id');
+            $query->addSelect('d.name as distributor_name');
+            $query->join(TABLE_LOCATION_TERRITORIES.' as territories', 'territories.id', '=', 'd.territory_id');
             $query->addSelect('territories.name as territory_name');
             $query->join(TABLE_LOCATION_AREAS.' as areas', 'areas.id', '=', 'territories.area_id');
             $query->addSelect('areas.name as area_name');
             $query->join(TABLE_LOCATION_PARTS.' as parts', 'parts.id', '=', 'areas.part_id');
             $query->addSelect('parts.name as part_name');
+            $query->join(TABLE_PACK_SIZES.' as ps', 'ps.id', '=', 'sd.pack_size_id');
+            $query->addSelect('ps.name as pack_size_name');
+            $query->join(TABLE_VARIETIES.' as varieties', 'varieties.id', '=', 'ps.variety_id');
+            $query->addSelect('varieties.name as variety_name');
+            $query->join(TABLE_CROP_TYPES.' as crop_types', 'crop_types.id', '=', 'varieties.crop_type_id');
+            $query->addSelect('crop_types.name as crop_type_name');
+            $query->join(TABLE_CROPS.' as crops', 'crops.id', '=', 'crop_types.crop_id');
+            $query->addSelect('crops.name as crop_name');
 
+            $query->orderBy('sd.id', 'DESC');
+            $query->where('sd.status', '!=', SYSTEM_STATUS_DELETE);
             if ($perPage == -1) {
                 $perPage = $query->count();
                 if($perPage<1){
@@ -111,19 +120,25 @@ class CropBusinessTeamController extends RootController
     public function getItem(Request $request, $itemId): JsonResponse
     {
         if ($this->permissions->action_0 == 1) {
-            $query=DB::table(TABLE_RESEARCH_CROPS.' as rc');
-            $query->select('rc.*');
-            $query->join(TABLE_CROP_TYPES2.' as crop_types2', 'crop_types2.id', '=', 'rc.crop_type2_id');
-            $query->addSelect('crop_types2.name as crop_type2_name');
-            $query->join(TABLE_CROPS.' as crops', 'crops.id', '=', 'crop_types2.crop_id');
-            $query->addSelect('crops.name as crop_name');
-            $query->join(TABLE_LOCATION_TERRITORIES.' as territories', 'territories.id', '=', 'rc.territory_id');
-            $query->addSelect('territories.name as territory_name');
+            $query=DB::table(TABLE_SALES_DISTRIBUTORS.' as sd');
+            $query->select('sd.*');
+            $query->join(TABLE_DISTRIBUTORS.' as d', 'd.id', '=', 'sd.distributor_id');
+            $query->addSelect('d.name as distributor_name');
+            $query->join(TABLE_LOCATION_TERRITORIES.' as territories', 'territories.id', '=', 'd.territory_id');
+            $query->addSelect('territories.name as territory_name','territories.id as territory_id');
             $query->join(TABLE_LOCATION_AREAS.' as areas', 'areas.id', '=', 'territories.area_id');
-            $query->addSelect('areas.name as area_name');
+            $query->addSelect('areas.name as area_name','areas.id as area_id');
             $query->join(TABLE_LOCATION_PARTS.' as parts', 'parts.id', '=', 'areas.part_id');
-            $query->addSelect('parts.name as part_name');
-            $query->where('rc.id','=',$itemId);
+            $query->addSelect('parts.name as part_name','parts.id as part_id');
+            $query->join(TABLE_PACK_SIZES.' as ps', 'ps.id', '=', 'sd.pack_size_id');
+            $query->addSelect('ps.name as pack_size_name');
+            $query->join(TABLE_VARIETIES.' as varieties', 'varieties.id', '=', 'ps.variety_id');
+            $query->addSelect('varieties.name as variety_name','varieties.id as variety_id');
+            $query->join(TABLE_CROP_TYPES.' as crop_types', 'crop_types.id', '=', 'varieties.crop_type_id');
+            $query->addSelect('crop_types.name as crop_type_name','crop_types.id as crop_type_id');
+            $query->join(TABLE_CROPS.' as crops', 'crops.id', '=', 'crop_types.crop_id');
+            $query->addSelect('crops.name as crop_name','crops.id as crop_id');
+            $query->where('sd.id','=',$itemId);
             $result = $query->first();
             if (!$result) {
                 return response()->json(['error' => 'ITEM_NOT_FOUND', 'messages' => __('Invalid Id ' . $itemId)]);
@@ -151,18 +166,24 @@ class CropBusinessTeamController extends RootController
         $this->checkSaveToken();
         //Input validation start
         $validation_rule = [];
+        $validation_rule['sales_at'] = ['required'];
+        $validation_rule['invoice_no'] = ['required'];
+        $validation_rule['distributor_id'] = ['required','numeric'];
+        $validation_rule['pack_size_id'] = ['required','numeric'];
+        $validation_rule['quantity'] = ['required','numeric'];
+        $validation_rule['unit_price'] = ['required','numeric'];
+        $validation_rule['amount'] = ['required','numeric'];
 
-        $validation_rule['characteries'] = ['nullable'];
 
+        $validation_rule['status'] = [Rule::in([SYSTEM_STATUS_ACTIVE, SYSTEM_STATUS_INACTIVE])];
         $itemNew = $request->input('item');
-
         $itemOld = [];
 
         $this->validateInputKeys($itemNew, array_keys($validation_rule));
 
         //edit change checking
         if ($itemId > 0) {
-            $result = DB::table(TABLE_RESEARCH_CROPS)->select(array_keys($validation_rule))->find($itemId);
+            $result = DB::table(TABLE_SALES_DISTRIBUTORS)->select(array_keys($validation_rule))->find($itemId);
             if (!$result) {
                 return response()->json(['error' => 'ITEM_NOT_FOUND', 'messages' => __('Invalid Id ' . $itemId)]);
             }
@@ -197,20 +218,20 @@ class CropBusinessTeamController extends RootController
         try {
             $time = Carbon::now();
             $dataHistory = [];
-            $dataHistory['table_name'] = TABLE_RESEARCH_CROPS;
+            $dataHistory['table_name'] = TABLE_SALES_DISTRIBUTORS;
             $dataHistory['controller'] = (new \ReflectionClass(__CLASS__))->getShortName();
             $dataHistory['method'] = __FUNCTION__;
             $newId = $itemId;
             if ($itemId > 0) {
-                $itemNew['business_team_updated_by'] = $this->user->id;
-                $itemNew['business_team_updated_at'] = $time;
-                DB::table(TABLE_RESEARCH_CROPS)->where('id', $itemId)->update($itemNew);
+                $itemNew['updated_by'] = $this->user->id;
+                $itemNew['updated_at'] = $time;
+                DB::table(TABLE_SALES_DISTRIBUTORS)->where('id', $itemId)->update($itemNew);
                 $dataHistory['table_id'] = $itemId;
                 $dataHistory['action'] = DB_ACTION_EDIT;
             } else {
                 $itemNew['created_by'] = $this->user->id;
                 $itemNew['created_at'] = $time;
-                $newId = DB::table(TABLE_RESEARCH_CROPS)->insertGetId($itemNew);
+                $newId = DB::table(TABLE_SALES_DISTRIBUTORS)->insertGetId($itemNew);
                 $dataHistory['table_id'] = $newId;
                 $dataHistory['action'] = DB_ACTION_ADD;
             }
