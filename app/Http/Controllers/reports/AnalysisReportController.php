@@ -36,67 +36,56 @@ class AnalysisReportController extends RootController
                 ->where('status', SYSTEM_STATUS_ACTIVE)
                 ->get();
             $response['location_parts'] = DB::table(TABLE_LOCATION_PARTS)
-                ->select('id', 'name')
+                ->select('id', 'name', 'status')
                 ->orderBy('name', 'ASC')
-                ->where('status', SYSTEM_STATUS_ACTIVE)
                 ->get();
             $response['location_areas'] = DB::table(TABLE_LOCATION_AREAS)
-                ->select('id', 'name','part_id')
+                ->select('id', 'name','part_id', 'status')
                 ->orderBy('name', 'ASC')
-                ->where('status', SYSTEM_STATUS_ACTIVE)
                 ->get();
             $response['location_territories'] = DB::table(TABLE_LOCATION_TERRITORIES)
-                ->select('id', 'name','area_id')
+                ->select('id', 'name','area_id', 'status')
                 ->orderBy('name', 'ASC')
-                ->where('status', SYSTEM_STATUS_ACTIVE)
                 ->get();
             $response['location_divisions'] = DB::table(TABLE_LOCATION_DIVISIONS)
-                ->select('id', 'name')
+                ->select('id', 'name', 'status')
                 ->orderBy('name', 'ASC')
-                ->where('status', SYSTEM_STATUS_ACTIVE)
                 ->get();
             $response['location_districts'] = DB::table(TABLE_LOCATION_DISTRICTS)
-                ->select('id', 'name', 'division_id')
+                ->select('id', 'name', 'division_id', 'status')
                 ->orderBy('name', 'ASC')
-                ->where('status', SYSTEM_STATUS_ACTIVE)
                 ->get();
 
             $response['location_upazilas'] = DB::table(TABLE_LOCATION_UPAZILAS)
-                ->select('id', 'name','district_id','territory_id')
+                ->select('id', 'name','district_id','territory_id', 'status')
                 ->orderBy('name', 'ASC')
-                ->where('status', SYSTEM_STATUS_ACTIVE)
                 ->get();
             $response['location_unions'] = DB::table(TABLE_LOCATION_UNIONS)
-                ->select('id', 'name','upazila_id')
+                ->select('id', 'name','upazila_id', 'status')
                 ->orderBy('name', 'ASC')
-                ->where('status', SYSTEM_STATUS_ACTIVE)
                 ->get();
             $response['crops'] = DB::table(TABLE_CROPS)
-                ->select('id', 'name')
+                ->select('id', 'name', 'status')
                 ->orderBy('ordering', 'ASC')
-                ->where('status', SYSTEM_STATUS_ACTIVE)
                 ->get();
             $response['crop_types'] = DB::table(TABLE_CROP_TYPES)
-                ->select('id', 'name','crop_id')
+                ->select('id', 'name','crop_id', 'status')
                 ->orderBy('ordering', 'ASC')
-                ->where('status', SYSTEM_STATUS_ACTIVE)
                 ->get();
+
             $response['varieties']=DB::table(TABLE_VARIETIES.' as varieties')
                 ->select('varieties.*')
                 ->leftJoin(TABLE_COMPETITORS.' as competitors', 'competitors.id', '=', 'varieties.competitor_id')
                 ->addSelect('competitors.name as competitor_name')
                 ->orderBy('varieties.id', 'DESC')
-                ->where('varieties.status', '!=', SYSTEM_STATUS_DELETE)
                 ->get();
             $response['principals'] = DB::table(TABLE_PRINCIPALS)
-                ->select('id', 'name')
+                ->select('id', 'name', 'status')
                 ->orderBy('ordering', 'ASC')
-                ->where('status', SYSTEM_STATUS_ACTIVE)
                 ->get();
             $response['competitors'] = DB::table(TABLE_COMPETITORS)
-                ->select('id', 'name')
+                ->select('id', 'name', 'status')
                 ->orderBy('ordering', 'ASC')
-                ->where('status', SYSTEM_STATUS_ACTIVE)
                 ->get();
             $response['user_locations']=['part_id'=>$this->user->part_id,'area_id'=>$this->user->area_id,'territory_id'=>$this->user->territory_id];
             return response()->json($response);
