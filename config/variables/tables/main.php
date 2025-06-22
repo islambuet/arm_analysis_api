@@ -26,3 +26,4 @@ define('TABLE_ANALYSIS_YEARS', $db_main.'.analysis_years');
 
 define('TABLE_ANALYSIS_DATA', $db_main.'.analysis_data');
 define('TABLE_SALES_DISTRIBUTORS', $db_main.'.sales_distributors');
+define('TABLE_TARGETS_DISTRIBUTORS', $db_main.'.targets_distributors');
