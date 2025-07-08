@@ -3,8 +3,8 @@
 use App\Http\Controllers as Controllers;
 use Illuminate\Support\Facades\Route;
 
-$url='reports/analysis';
-$controllerClass= Controllers\reports\AnalysisReportController::class;
+$url='reports/market_size';
+$controllerClass= Controllers\reports\MarketSizeReportController::class;
 /** @noinspection DuplicatedCode */
 Route::middleware('logged-user')->group(function()use ($url,$controllerClass){
     Route::match(['GET','POST'],$url.'/initialize', [$controllerClass, 'initialize']);

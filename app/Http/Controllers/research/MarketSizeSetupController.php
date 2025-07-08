@@ -12,9 +12,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 
-class ResearchSalesTeamController extends RootController
+class MarketSizeSetupController extends RootController
 {
-    public $api_url = 'research/research_sales_team';
+    public $api_url = 'research/market_size_setup';
     public $permissions;
 
     public function __construct()
@@ -64,7 +64,7 @@ class ResearchSalesTeamController extends RootController
     public function getItems(Request $request,$analysisYearId): JsonResponse
     {
         if ($this->permissions->action_0 == 1) {
-            $results=DB::table(TABLE_ANALYSIS_DATA.' as ad')
+            $results=DB::table(TABLE_MARKET_SIZE_DATA.' as ad')
                 ->select(DB::raw('COUNT(type_id) as total_type_entered'))
                 ->addSelect('district_id')
                 ->groupBy('ad.district_id')
@@ -125,7 +125,7 @@ class ResearchSalesTeamController extends RootController
                 $response['varieties_competitor_ordered'][$result->crop_type_id][]=$result;
             }
 
-            $results=DB::table(TABLE_ANALYSIS_DATA.' as ad')
+            $results=DB::table(TABLE_MARKET_SIZE_DATA.' as ad')
                 ->select('ad.*')
                 ->where('ad.analysis_year_id','=',$analysisYearId)
                 ->where('ad.district_id','=',$itemId)
@@ -190,7 +190,7 @@ class ResearchSalesTeamController extends RootController
         if (!$itemsNew) {
             return response()->json(['error' => 'VALIDATION_FAILED', 'messages' => 'Inputs was Not found']);
         }
-        $results=DB::table(TABLE_ANALYSIS_DATA.' as ad')
+        $results=DB::table(TABLE_MARKET_SIZE_DATA.' as ad')
             ->select('ad.*')
             ->where('ad.analysis_year_id','=',$analysis_year_id)
             ->where('ad.district_id','=',$district_id)
@@ -274,7 +274,7 @@ class ResearchSalesTeamController extends RootController
                     $itemNew=$row['ItemNew'];
                     if($row['id']>0){
                         $dataHistory = [];
-                        $dataHistory['table_name'] = TABLE_ANALYSIS_DATA;
+                        $dataHistory['table_name'] = TABLE_MARKET_SIZE_DATA;
                         $dataHistory['controller'] = (new \ReflectionClass(__CLASS__))->getShortName();
                         $dataHistory['method'] = __FUNCTION__;
                         $dataHistory['table_id'] = $row['id'];
@@ -286,14 +286,14 @@ class ResearchSalesTeamController extends RootController
 
                         $itemNew['updated_sales_team_by'] = $this->user->id;
                         $itemNew['updated_sales_team_at'] = $time;
-                        DB::table(TABLE_ANALYSIS_DATA)->where('id', $row['id'])->update($itemNew);
+                        DB::table(TABLE_MARKET_SIZE_DATA)->where('id', $row['id'])->update($itemNew);
 
                         $this->dBSaveHistory($dataHistory, TABLE_SYSTEM_HISTORIES);
                     }
                     else{
                         $itemNew['created_by'] = $this->user->id;
                         $itemNew['created_at'] = $time;
-                        DB::table(TABLE_ANALYSIS_DATA)->insertGetId($itemNew);
+                        DB::table(TABLE_MARKET_SIZE_DATA)->insertGetId($itemNew);
                     }
                 }
                 $this->updateSaveToken();
