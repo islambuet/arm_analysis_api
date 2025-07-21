@@ -45,6 +45,11 @@ class DistributorController extends RootController
                 ->orderBy('name', 'ASC')
                 ->where('status', SYSTEM_STATUS_ACTIVE)
                 ->get();
+            $response['location_districts'] = DB::table(TABLE_LOCATION_DISTRICTS)
+                ->select('id', 'name')
+                ->orderBy('ordering', 'ASC')
+                ->where('status', SYSTEM_STATUS_ACTIVE)
+                ->get();
             return response()->json($response);
 
         } else {
@@ -59,6 +64,8 @@ class DistributorController extends RootController
             //$query=DB::table(TABLE_CROP_TYPES);
             $query=DB::table(TABLE_DISTRIBUTORS.' as d');
             $query->select('d.*');
+            $query->join(TABLE_LOCATION_DISTRICTS.' as districts', 'districts.id', '=', 'd.district_id');
+            $query->addSelect('districts.name as district_name');
             $query->join(TABLE_LOCATION_TERRITORIES.' as territories', 'territories.id', '=', 'd.territory_id');
             $query->addSelect('territories.name as territory_name');
             $query->join(TABLE_LOCATION_AREAS.' as areas', 'areas.id', '=', 'territories.area_id');
@@ -85,6 +92,8 @@ class DistributorController extends RootController
         if ($this->permissions->action_0 == 1) {
             $query=DB::table(TABLE_DISTRIBUTORS.' as d');
             $query->select('d.*');
+            $query->join(TABLE_LOCATION_DISTRICTS.' as districts', 'districts.id', '=', 'd.district_id');
+            $query->addSelect('districts.name as district_name');
             $query->join(TABLE_LOCATION_TERRITORIES.' as territories', 'territories.id', '=', 'd.territory_id');
             $query->addSelect('territories.name as territory_name');
             $query->join(TABLE_LOCATION_AREAS.' as areas', 'areas.id', '=', 'territories.area_id');
@@ -122,6 +131,7 @@ class DistributorController extends RootController
         //Input validation start
         $validation_rule = [];
         $validation_rule['name'] = ['required'];
+        $validation_rule['district_id'] = ['required','numeric'];
         $validation_rule['territory_id'] = ['required','numeric'];
         $validation_rule['mobile_no'] = ['nullable'];
         $validation_rule['address'] = ['nullable'];
