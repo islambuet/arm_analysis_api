@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers\research;
 
+use App\Helpers\ConfigurationHelper;
 use App\Http\Controllers\RootController;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -45,11 +46,28 @@ class TargetsDistributorsController extends RootController
                 ->orderBy('name', 'ASC')
                 ->where('status', SYSTEM_STATUS_ACTIVE)
                 ->get();
-            $response['distributors'] = DB::table(TABLE_DISTRIBUTORS)
-                ->select('id', 'name','territory_id')
-                ->orderBy('name', 'ASC')
-                ->where('status', SYSTEM_STATUS_ACTIVE)
-                ->get();
+            $query=DB::table(TABLE_DISTRIBUTORS.' as d');
+            $query->select('d.*');
+
+            $query->join(TABLE_LOCATION_TERRITORIES.' as territories', 'territories.id', '=', 'd.territory_id');
+            $query->addSelect('territories.name as territory_name','territories.area_id');
+            $query->join(TABLE_LOCATION_AREAS.' as areas', 'areas.id', '=', 'territories.area_id');
+            $query->addSelect('areas.name as area_name','areas.part_id');
+            $query->join(TABLE_LOCATION_PARTS.' as parts', 'parts.id', '=', 'areas.part_id');
+            $query->addSelect('parts.name as part_name');
+            $query->orderBy('d.name', 'DESC');
+            $query->where('d.status', SYSTEM_STATUS_ACTIVE);
+            if($this->user->territory_id>0){
+                $query->where('territories.id', $this->user->territory_id);
+            }
+            else if($this->user->area_id>0){
+                $query->where('areas.id', $this->user->area_id);
+            }
+            else if($this->user->part_id>0){
+                $query->where('parts.id', $this->user->part_id);
+            }
+
+            $response['distributors']=$query->get();
             $response['crops']  = DB::table(TABLE_CROPS)
                 ->select('id', 'name')
                 ->orderBy('ordering', 'ASC')
@@ -61,11 +79,11 @@ class TargetsDistributorsController extends RootController
                 ->where('status', SYSTEM_STATUS_ACTIVE)
                 ->get();
             $response['varieties'] = DB::table(TABLE_VARIETIES)
-                ->select('id', 'name','crop_type_id')
+                ->select('*')
                 ->orderBy('ordering', 'ASC')
                 ->where('status', SYSTEM_STATUS_ACTIVE)
-                ->where('whose', 'ARM')
                 ->get();
+            $response['user_locations']=['part_id'=>$this->user->part_id,'area_id'=>$this->user->area_id,'territory_id'=>$this->user->territory_id];
             return response()->json($response);
 
         } else {
@@ -76,35 +94,23 @@ class TargetsDistributorsController extends RootController
     public function getItems(Request $request): JsonResponse
     {
         if ($this->permissions->action_0 == 1) {
-            $perPage = $request->input('perPage', 50);
-            //$query=DB::table(TABLE_CROP_TYPES);
-            $query=DB::table(TABLE_TARGETS_DISTRIBUTORS.' as sd');
-            $query->select('sd.*');
-            $query->join(TABLE_DISTRIBUTORS.' as d', 'd.id', '=', 'sd.distributor_id');
-            $query->addSelect('d.name as distributor_name');
-            $query->join(TABLE_LOCATION_TERRITORIES.' as territories', 'territories.id', '=', 'd.territory_id');
-            $query->addSelect('territories.name as territory_name');
-            $query->join(TABLE_LOCATION_AREAS.' as areas', 'areas.id', '=', 'territories.area_id');
-            $query->addSelect('areas.name as area_name');
-            $query->join(TABLE_LOCATION_PARTS.' as parts', 'parts.id', '=', 'areas.part_id');
-            $query->addSelect('parts.name as part_name');
-            $query->join(TABLE_VARIETIES.' as varieties', 'varieties.id', '=', 'sd.variety_id');
-            $query->addSelect('varieties.name as variety_name');
-            $query->join(TABLE_CROP_TYPES.' as crop_types', 'crop_types.id', '=', 'varieties.crop_type_id');
-            $query->addSelect('crop_types.name as crop_type_name');
-            $query->join(TABLE_CROPS.' as crops', 'crops.id', '=', 'crop_types.crop_id');
-            $query->addSelect('crops.name as crop_name');
-
-            $query->orderBy('sd.id', 'DESC');
-            $query->where('sd.status', '!=', SYSTEM_STATUS_DELETE);
-            if ($perPage == -1) {
-                $perPage = $query->count();
-                if($perPage<1){
-                    $perPage=50;
-                }
+            $current_fiscal_year=date("Y");
+            if(date('m')<ConfigurationHelper::getCurrentFiscalYearStartingMonth()){
+                $current_fiscal_year--;
             }
-            $results = $query->paginate($perPage)->toArray();
-            return response()->json(['error'=>'','items'=>$results]);
+            $results=DB::table(TABLE_TARGETS_DISTRIBUTORS.' as td')
+                ->select(DB::raw('COUNT(type_id) as total_type_entered'))
+                ->addSelect('distributor_id')
+                ->groupBy('distributor_id')
+                ->where('td.year','=',$current_fiscal_year)
+                ->get();
+            $response = [];
+            $response['error'] ='';
+            $response['items']=[];
+            foreach ($results as $result){
+                $response['items'][$result->distributor_id]=$result;
+            }
+            return response()->json($response);
         } else {
             return response()->json(['error' => 'ACCESS_DENIED', 'messages' => __('You do not have access on this page')]);
         }
@@ -113,28 +119,14 @@ class TargetsDistributorsController extends RootController
     public function getItem(Request $request, $itemId): JsonResponse
     {
         if ($this->permissions->action_0 == 1) {
+            $item = $request->input('item');
             $query=DB::table(TABLE_TARGETS_DISTRIBUTORS.' as sd');
             $query->select('sd.*');
-            $query->join(TABLE_DISTRIBUTORS.' as d', 'd.id', '=', 'sd.distributor_id');
-            $query->addSelect('d.name as distributor_name');
-            $query->join(TABLE_LOCATION_TERRITORIES.' as territories', 'territories.id', '=', 'd.territory_id');
-            $query->addSelect('territories.name as territory_name','territories.id as territory_id');
-            $query->join(TABLE_LOCATION_AREAS.' as areas', 'areas.id', '=', 'territories.area_id');
-            $query->addSelect('areas.name as area_name','areas.id as area_id');
-            $query->join(TABLE_LOCATION_PARTS.' as parts', 'parts.id', '=', 'areas.part_id');
-            $query->addSelect('parts.name as part_name','parts.id as part_id');
-            $query->join(TABLE_VARIETIES.' as varieties', 'varieties.id', '=', 'sd.variety_id');
-            $query->addSelect('varieties.name as variety_name','varieties.id as variety_id');
-            $query->join(TABLE_CROP_TYPES.' as crop_types', 'crop_types.id', '=', 'varieties.crop_type_id');
-            $query->addSelect('crop_types.name as crop_type_name','crop_types.id as crop_type_id');
-            $query->join(TABLE_CROPS.' as crops', 'crops.id', '=', 'crop_types.crop_id');
-            $query->addSelect('crops.name as crop_name','crops.id as crop_id');
-            $query->where('sd.id','=',$itemId);
+            $query->where('sd.distributor_id','=',$itemId);
+            $query->where('sd.type_id','=',$item['type_id']);
+            $query->where('sd.year','=',$item['fiscal_year']);
             $result = $query->first();
-            if (!$result) {
-                return response()->json(['error' => 'ITEM_NOT_FOUND', 'messages' => __('Invalid Id ' . $itemId)]);
-            }
-            return response()->json(['error'=>'','item'=>$result]);
+            return response()->json(['error'=>'','item'=>$result,'inputs'=>$item]);
         } else {
             return response()->json(['error' => 'ACCESS_DENIED', 'messages' => $this->permissions]);
         }
