@@ -102,7 +102,7 @@ class TargetsDistributorsController extends RootController
                 ->select(DB::raw('COUNT(type_id) as total_type_entered'))
                 ->addSelect('distributor_id')
                 ->groupBy('distributor_id')
-                ->where('td.year','=',$current_fiscal_year)
+                ->where('td.fiscal_year','=',$current_fiscal_year)
                 ->get();
             $response = [];
             $response['error'] ='';
@@ -120,13 +120,45 @@ class TargetsDistributorsController extends RootController
     {
         if ($this->permissions->action_0 == 1) {
             $item = $request->input('item');
+            $response = [];
+            $response['error'] ='';
+
             $query=DB::table(TABLE_TARGETS_DISTRIBUTORS.' as sd');
             $query->select('sd.*');
             $query->where('sd.distributor_id','=',$itemId);
             $query->where('sd.type_id','=',$item['type_id']);
-            $query->where('sd.year','=',$item['fiscal_year']);
+            $query->where('sd.fiscal_year','=',$item['fiscal_year']);
             $result = $query->first();
-            return response()->json(['error'=>'','item'=>$result,'inputs'=>$item]);
+            if($result){
+                $competitor_variety_major=[];
+                if(strlen($result->competitor_variety_major)>3){
+                    $temp=explode(",,,",$result->competitor_variety_major);
+                    foreach ($temp as $t){
+                        if(str_contains($t,',')){
+                            $competitor_variety_id=substr($t,0,strpos($t,','));
+                            $competitor_variety_major[$competitor_variety_id]=[];
+                            $temp2=explode("_",substr($t,strpos($t,',')+1));;
+                            foreach ($temp2 as $t2){
+                                if($t2>0){
+                                    $competitor_variety_major[$competitor_variety_id][]=$t2;
+                                }
+                            }
+
+                        }
+                    }
+                }
+                $result->competitor_variety_major=$competitor_variety_major;
+                foreach (['forecast','dealer_meeting','farmer_meeting','num_demo','num_result_sharing','num_field_day'] as $key){
+                    if($result->$key){
+                        $result->$key=json_decode($result->$key,false);
+                    }
+
+                }
+
+                $response['item']=$result;
+            }
+            //return response()->json(['error'=>'','item'=>$result,'inputs'=>$item]);
+            return response()->json($response);
         } else {
             return response()->json(['error' => 'ACCESS_DENIED', 'messages' => $this->permissions]);
         }
@@ -134,70 +166,81 @@ class TargetsDistributorsController extends RootController
 
     public function saveItem(Request $request): JsonResponse
     {
-        $itemId = $request->input('id', 0);
-        //permission checking start
-        if ($itemId > 0) {
-            if ($this->permissions->action_2 != 1) {
-                return response()->json(['error' => 'ACCESS_DENIED', 'messages' => __('You do not have Edit access')]);
-            }
-        } else {
-            if ($this->permissions->action_1 != 1) {
-                return response()->json(['error' => 'ACCESS_DENIED', 'messages' => __('You do not have add access')]);
-            }
+
+        if( ($this->permissions->action_2 != 1) ||($this->permissions->action_1 != 1)) {
+            return response()->json(['error' => 'ACCESS_DENIED', 'messages' => __('You do not have access')]);
         }
+
         //permission checking passed
         $this->checkSaveToken();
         //Input validation start
         $validation_rule = [];
-        $validation_rule['year'] = ['required'];
         $validation_rule['distributor_id'] = ['required','numeric'];
-        $validation_rule['variety_id'] = ['required','numeric'];
-        $validation_rule['quantity'] = ['required','numeric'];
-        $validation_rule['unit_price'] = ['required','numeric'];
-        $validation_rule['amount'] = ['required','numeric'];
+        $validation_rule['fiscal_year'] = ['required','numeric'];
+        $validation_rule['type_id'] = ['required','numeric'];
+        $validation_rule['month_start'] = ['numeric'];
+        $validation_rule['month_end'] = ['numeric'];
+        $validation_rule['pocket_market'] = ['nullable'];
+        $validation_rule['competitor_variety_major'] = ['nullable'];
+        $validation_rule['distributor_recommendation'] = ['nullable'];
+        $validation_rule['manager_recommendation'] = ['nullable'];
+        $validation_rule['manager_suggestion'] = ['nullable'];
+        $validation_rule['forecast'] = ['nullable'];
+        $validation_rule['dealer_meeting'] = ['nullable'];
+        $validation_rule['farmer_meeting'] = ['nullable'];
+        $validation_rule['num_demo'] = ['nullable'];
+        $validation_rule['num_result_sharing'] = ['nullable'];
+        $validation_rule['num_field_day'] = ['nullable'];
 
-
-        $validation_rule['status'] = [Rule::in([SYSTEM_STATUS_ACTIVE, SYSTEM_STATUS_INACTIVE])];
         $itemNew = $request->input('item');
         $itemOld = [];
-
+        $itemId=0;
+        if (!$itemNew) {
+            return response()->json(['error' => 'VALIDATION_FAILED', 'messages' => 'Inputs was Not found']);
+        }
         $this->validateInputKeys($itemNew, array_keys($validation_rule));
-
-        //edit change checking
-        if ($itemId > 0) {
-            $result = DB::table(TABLE_TARGETS_DISTRIBUTORS)->select(array_keys($validation_rule))->find($itemId);
-            if (!$result) {
-                return response()->json(['error' => 'ITEM_NOT_FOUND', 'messages' => __('Invalid Id ' . $itemId)]);
+        $competitor_variety_major=',,,';
+        if(isset($itemNew['competitor_variety_major'])){
+            foreach ($itemNew['competitor_variety_major'] as $major){
+                $competitor_variety_major.=($major.',,,');
             }
-            $itemOld = (array)$result;
+        }
+        $itemNew['competitor_variety_major']=$competitor_variety_major;
+        foreach (['forecast','dealer_meeting','farmer_meeting','num_demo','num_result_sharing','num_field_day'] as $key){
+            $itemNew[$key]=json_encode($itemNew[$key]);
+        }
+
+
+
+
+        $query=DB::table(TABLE_TARGETS_DISTRIBUTORS.' as sd');
+        $query->select('sd.*');
+        $query->where('sd.distributor_id','=',$itemNew['distributor_id']);
+        $query->where('sd.type_id','=',$itemNew['type_id']);
+        $query->where('sd.fiscal_year','=',$itemNew['fiscal_year']);
+        $result = $query->first();
+        if($result){
+            $itemOld=(array)$result;
+            $itemId=$itemOld['id'];
             foreach ($itemOld as $key => $oldValue) {
                 if (array_key_exists($key, $itemNew)) {
-
                     if ($oldValue == $itemNew[$key]) {
                         //unchanged so remove from both
                         unset($itemNew[$key]);
                         unset($itemOld[$key]);
-                        unset($validation_rule[$key]);
                     }
-//                    else if($key=='crop_id'){
-//                        return response()->json(['error' => 'VALIDATION_FAILED', 'messages' =>'Cannot Change Crop']);
-//                    }
                 } else {
-                    //will not happen if it comes form vue. removing rule and key for not change
-                    unset($validation_rule[$key]);
+                    //only for select query keys
                     unset($itemOld[$key]);
                 }
             }
         }
-        //if itemNew Empty
         if (!$itemNew) {
             return response()->json(['error' => 'VALIDATION_FAILED', 'messages' => 'Nothing was Changed']);
         }
-        $this->validateInputValues($itemNew, $validation_rule);
-        //TODO validate crop_id
-        //Input validation ends
-        DB::beginTransaction();
-        try {
+
+//        DB::beginTransaction();
+//        try {
             $time = Carbon::now();
             $dataHistory = [];
             $dataHistory['table_name'] = TABLE_TARGETS_DISTRIBUTORS;
@@ -229,11 +272,11 @@ class TargetsDistributorsController extends RootController
             DB::commit();
 
             return response()->json(['error' => '', 'messages' => 'Data (' . $newId . ')' . ($itemId > 0 ? 'Updated' : 'Created') . ')  Successfully']);
-        }
-        catch (\Exception $ex) {
-            DB::rollback();
-            return response()->json(['error' => 'DB_SAVE_FAILED', 'messages' => __('Failed to save.')]);
-        }
+//        }
+//        catch (\Exception $ex) {
+//            DB::rollback();
+//            return response()->json(['error' => 'DB_SAVE_FAILED', 'messages' => __('Failed to save.')]);
+//        }
     }
 }
 
