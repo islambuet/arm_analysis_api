@@ -97,7 +97,7 @@ class CropTypesController extends RootController
         //Input validation start
         $validation_rule = [];
         $validation_rule['name'] = ['required'];
-        $validation_rule['code'] = ['required'];
+        $validation_rule['code'] = ['nullable'];
         $validation_rule['crop_id'] = ['required','numeric'];
         $validation_rule['ordering']=['numeric'];
         $validation_rule['status'] = [Rule::in([SYSTEM_STATUS_ACTIVE, SYSTEM_STATUS_INACTIVE])];

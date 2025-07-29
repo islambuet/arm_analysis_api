@@ -83,7 +83,7 @@ class CropsController extends RootController
         //Input validation start
         $validation_rule = [];
         $validation_rule['name'] = ['required'];
-        $validation_rule['code'] = ['required'];
+        $validation_rule['code'] = ['nullable'];
         $validation_rule['replica'] = [Rule::in([SYSTEM_STATUS_YES, SYSTEM_STATUS_NO])];
         $validation_rule['initial_plants']=['numeric'];
         $validation_rule['ordering']=['numeric'];
