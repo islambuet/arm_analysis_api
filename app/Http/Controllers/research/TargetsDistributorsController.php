@@ -171,7 +171,7 @@ class TargetsDistributorsController extends RootController
                 ->addSelect(DB::raw("IF(sd.sales_at>='".$year_2_date."' && sd.sales_at< '".$year_1_date."', 'year_2', 'year_1') as year"))
                 ->groupBy('varieties.id')
                 ->groupBy('year')
-                //->where('sd.distributor_id','=',$itemId)
+                ->where('sd.distributor_id','=',$itemId)
                 ->where('varieties.crop_type_id','=',$item['type_id'])
                 ->where('sd.sales_at','>=',$year_1_date)
                 ->where('sd.sales_at','<',$year0_date)
