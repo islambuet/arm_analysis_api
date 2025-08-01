@@ -157,6 +157,30 @@ class TargetsDistributorsController extends RootController
 
                 $response['item']=$result;
             }
+            $response['sales']['year_1']=[];
+            $response['sales']['year_2']=[];
+            $year_2_date=($item['fiscal_year']-2).'-'.ConfigurationHelper::getCurrentFiscalYearStartingMonth().'-01';
+            $year_1_date=($item['fiscal_year']-1).'-'.ConfigurationHelper::getCurrentFiscalYearStartingMonth().'-01';
+            $year0_date=($item['fiscal_year']).'-'.ConfigurationHelper::getCurrentFiscalYearStartingMonth().'-01';
+
+            $results=DB::table(TABLE_SALES_DISTRIBUTORS.' as sd')
+                ->select(DB::raw('SUM(quantity) as quantity'))
+                ->join(TABLE_PACK_SIZES.' as ps', 'ps.id', '=', 'sd.pack_size_id')
+                ->join(TABLE_VARIETIES.' as varieties', 'varieties.id', '=', 'ps.variety_id')
+                ->addSelect('varieties.id as variety_id')
+                ->addSelect(DB::raw("IF(sd.sales_at>='".$year_2_date."' && sd.sales_at< '".$year_1_date."', 'year_2', 'year_1') as year"))
+                ->groupBy('varieties.id')
+                ->groupBy('year')
+                //->where('sd.distributor_id','=',$itemId)
+                ->where('varieties.crop_type_id','=',$item['type_id'])
+                ->where('sd.sales_at','>=',$year_1_date)
+                ->where('sd.sales_at','<',$year0_date)
+                ->get();
+            foreach ($results as $result){
+                $response['sales'][$result->year][$result->variety_id]=$result;
+            }
+
+
             //return response()->json(['error'=>'','item'=>$result,'inputs'=>$item]);
             return response()->json($response);
         } else {
