@@ -163,6 +163,7 @@ class DistributorsPlan3yrsController extends RootController
             $year_1_date=($item['fiscal_year']-1).'-'.ConfigurationHelper::getCurrentFiscalYearStartingMonth().'-01';
             $year0_date=($item['fiscal_year']).'-'.ConfigurationHelper::getCurrentFiscalYearStartingMonth().'-01';
 
+
             $results=DB::table(TABLE_DISTRIBUTORS_SALES.' as sd')
                 ->select(DB::raw('SUM(quantity) as quantity'))
                 ->join(TABLE_PACK_SIZES.' as ps', 'ps.id', '=', 'sd.pack_size_id')
@@ -173,7 +174,7 @@ class DistributorsPlan3yrsController extends RootController
                 ->groupBy('year')
                 ->where('sd.distributor_id','=',$itemId)
                 ->where('varieties.crop_type_id','=',$item['type_id'])
-                ->where('sd.sales_at','>=',$year_1_date)
+                ->where('sd.sales_at','>=',$year_2_date)
                 ->where('sd.sales_at','<',$year0_date)
                 ->get();
             foreach ($results as $result){
