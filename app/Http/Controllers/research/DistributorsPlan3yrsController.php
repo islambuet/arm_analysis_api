@@ -13,9 +13,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 
-class TargetsDistributorsController extends RootController
+class DistributorsPlan3yrsController extends RootController
 {
-    public $api_url = 'research/sales_distributors';
+    public $api_url = 'research/distributors_plan_3yrs';
     public $permissions;
 
     public function __construct()
@@ -98,7 +98,7 @@ class TargetsDistributorsController extends RootController
             if(date('m')<ConfigurationHelper::getCurrentFiscalYearStartingMonth()){
                 $current_fiscal_year--;
             }
-            $results=DB::table(TABLE_TARGETS_DISTRIBUTORS.' as td')
+            $results=DB::table(TABLE_DISTRIBUTORS_PLAN_3YRS.' as td')
                 ->select(DB::raw('COUNT(type_id) as total_type_entered'))
                 ->addSelect('distributor_id')
                 ->groupBy('distributor_id')
@@ -123,7 +123,7 @@ class TargetsDistributorsController extends RootController
             $response = [];
             $response['error'] ='';
 
-            $query=DB::table(TABLE_TARGETS_DISTRIBUTORS.' as sd');
+            $query=DB::table(TABLE_DISTRIBUTORS_PLAN_3YRS.' as sd');
             $query->select('sd.*');
             $query->where('sd.distributor_id','=',$itemId);
             $query->where('sd.type_id','=',$item['type_id']);
@@ -163,7 +163,7 @@ class TargetsDistributorsController extends RootController
             $year_1_date=($item['fiscal_year']-1).'-'.ConfigurationHelper::getCurrentFiscalYearStartingMonth().'-01';
             $year0_date=($item['fiscal_year']).'-'.ConfigurationHelper::getCurrentFiscalYearStartingMonth().'-01';
 
-            $results=DB::table(TABLE_SALES_DISTRIBUTORS.' as sd')
+            $results=DB::table(TABLE_DISTRIBUTORS_SALES.' as sd')
                 ->select(DB::raw('SUM(quantity) as quantity'))
                 ->join(TABLE_PACK_SIZES.' as ps', 'ps.id', '=', 'sd.pack_size_id')
                 ->join(TABLE_VARIETIES.' as varieties', 'varieties.id', '=', 'ps.variety_id')
@@ -237,7 +237,7 @@ class TargetsDistributorsController extends RootController
 
 
 
-        $query=DB::table(TABLE_TARGETS_DISTRIBUTORS.' as sd');
+        $query=DB::table(TABLE_DISTRIBUTORS_PLAN_3YRS.' as sd');
         $query->select('sd.*');
         $query->where('sd.distributor_id','=',$itemNew['distributor_id']);
         $query->where('sd.type_id','=',$itemNew['type_id']);
@@ -267,20 +267,20 @@ class TargetsDistributorsController extends RootController
 //        try {
             $time = Carbon::now();
             $dataHistory = [];
-            $dataHistory['table_name'] = TABLE_TARGETS_DISTRIBUTORS;
+            $dataHistory['table_name'] = TABLE_DISTRIBUTORS_PLAN_3YRS;
             $dataHistory['controller'] = (new \ReflectionClass(__CLASS__))->getShortName();
             $dataHistory['method'] = __FUNCTION__;
             $newId = $itemId;
             if ($itemId > 0) {
                 $itemNew['updated_by'] = $this->user->id;
                 $itemNew['updated_at'] = $time;
-                DB::table(TABLE_TARGETS_DISTRIBUTORS)->where('id', $itemId)->update($itemNew);
+                DB::table(TABLE_DISTRIBUTORS_PLAN_3YRS)->where('id', $itemId)->update($itemNew);
                 $dataHistory['table_id'] = $itemId;
                 $dataHistory['action'] = DB_ACTION_EDIT;
             } else {
                 $itemNew['created_by'] = $this->user->id;
                 $itemNew['created_at'] = $time;
-                $newId = DB::table(TABLE_TARGETS_DISTRIBUTORS)->insertGetId($itemNew);
+                $newId = DB::table(TABLE_DISTRIBUTORS_PLAN_3YRS)->insertGetId($itemNew);
                 $dataHistory['table_id'] = $newId;
                 $dataHistory['action'] = DB_ACTION_ADD;
             }

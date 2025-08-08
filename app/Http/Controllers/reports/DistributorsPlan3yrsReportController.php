@@ -12,9 +12,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 
-class ForecastReportController extends RootController
+class DistributorsPlan3yrsReportController extends RootController
 {
-    public $api_url = 'reports/forecast';
+    public $api_url = 'reports/distributors_plan_3yrs';
     public $permissions;
 
     public function __construct()
@@ -93,7 +93,7 @@ class ForecastReportController extends RootController
                 $results=DB::table(TABLE_LOCATION_UPAZILAS)->select('district_id','id')->where('territory_id',$options['territory_id'])->get();
                 $response['market_sizes']=$results;
             }
-            /*$query=DB::table(TABLE_SALES_DISTRIBUTORS.' as sd');
+            /*$query=DB::table(TABLE_DISTRIBUTORS_SALES.' as sd');
             $query->select('sd.*');
             $query->join(TABLE_DISTRIBUTORS.' as d', 'd.id', '=', 'sd.distributor_id');
             //$query->addSelect('d.territory_id as territory_id');

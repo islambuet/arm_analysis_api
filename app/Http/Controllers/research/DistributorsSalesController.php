@@ -12,9 +12,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 
-class SalesDistributorsController extends RootController
+class DistributorsSalesController extends RootController
 {
-    public $api_url = 'research/sales_distributors';
+    public $api_url = 'research/distributors_sales';
     public $permissions;
 
     public function __construct()
@@ -83,7 +83,7 @@ class SalesDistributorsController extends RootController
         if ($this->permissions->action_0 == 1) {
             $perPage = $request->input('perPage', 50);
             //$query=DB::table(TABLE_CROP_TYPES);
-            $query=DB::table(TABLE_SALES_DISTRIBUTORS.' as sd');
+            $query=DB::table(TABLE_DISTRIBUTORS_SALES.' as sd');
             $query->select('sd.*');
             $query->join(TABLE_DISTRIBUTORS.' as d', 'd.id', '=', 'sd.distributor_id');
             $query->addSelect('d.name as distributor_name');
@@ -120,7 +120,7 @@ class SalesDistributorsController extends RootController
     public function getItem(Request $request, $itemId): JsonResponse
     {
         if ($this->permissions->action_0 == 1) {
-            $query=DB::table(TABLE_SALES_DISTRIBUTORS.' as sd');
+            $query=DB::table(TABLE_DISTRIBUTORS_SALES.' as sd');
             $query->select('sd.*');
             $query->join(TABLE_DISTRIBUTORS.' as d', 'd.id', '=', 'sd.distributor_id');
             $query->addSelect('d.name as distributor_name');
@@ -183,7 +183,7 @@ class SalesDistributorsController extends RootController
 
         //edit change checking
         if ($itemId > 0) {
-            $result = DB::table(TABLE_SALES_DISTRIBUTORS)->select(array_keys($validation_rule))->find($itemId);
+            $result = DB::table(TABLE_DISTRIBUTORS_SALES)->select(array_keys($validation_rule))->find($itemId);
             if (!$result) {
                 return response()->json(['error' => 'ITEM_NOT_FOUND', 'messages' => __('Invalid Id ' . $itemId)]);
             }
@@ -218,20 +218,20 @@ class SalesDistributorsController extends RootController
         try {
             $time = Carbon::now();
             $dataHistory = [];
-            $dataHistory['table_name'] = TABLE_SALES_DISTRIBUTORS;
+            $dataHistory['table_name'] = TABLE_DISTRIBUTORS_SALES;
             $dataHistory['controller'] = (new \ReflectionClass(__CLASS__))->getShortName();
             $dataHistory['method'] = __FUNCTION__;
             $newId = $itemId;
             if ($itemId > 0) {
                 $itemNew['updated_by'] = $this->user->id;
                 $itemNew['updated_at'] = $time;
-                DB::table(TABLE_SALES_DISTRIBUTORS)->where('id', $itemId)->update($itemNew);
+                DB::table(TABLE_DISTRIBUTORS_SALES)->where('id', $itemId)->update($itemNew);
                 $dataHistory['table_id'] = $itemId;
                 $dataHistory['action'] = DB_ACTION_EDIT;
             } else {
                 $itemNew['created_by'] = $this->user->id;
                 $itemNew['created_at'] = $time;
-                $newId = DB::table(TABLE_SALES_DISTRIBUTORS)->insertGetId($itemNew);
+                $newId = DB::table(TABLE_DISTRIBUTORS_SALES)->insertGetId($itemNew);
                 $dataHistory['table_id'] = $newId;
                 $dataHistory['action'] = DB_ACTION_ADD;
             }

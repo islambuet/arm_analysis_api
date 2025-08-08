@@ -80,7 +80,7 @@ class SalesReportController extends RootController
             $response['error'] ='';
             $options = $request->input('options');
 
-            $query=DB::table(TABLE_SALES_DISTRIBUTORS.' as sd');
+            $query=DB::table(TABLE_DISTRIBUTORS_SALES.' as sd');
             $query->select('sd.*');
             $query->join(TABLE_DISTRIBUTORS.' as d', 'd.id', '=', 'sd.distributor_id');
             //$query->addSelect('d.territory_id as territory_id');
