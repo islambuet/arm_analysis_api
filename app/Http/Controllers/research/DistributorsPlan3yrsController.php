@@ -264,8 +264,8 @@ class DistributorsPlan3yrsController extends RootController
             return response()->json(['error' => 'VALIDATION_FAILED', 'messages' => 'Nothing was Changed']);
         }
 
-//        DB::beginTransaction();
-//        try {
+        DB::beginTransaction();
+        try {
             $time = Carbon::now();
             $dataHistory = [];
             $dataHistory['table_name'] = TABLE_DISTRIBUTORS_PLAN_3YRS;
@@ -297,11 +297,11 @@ class DistributorsPlan3yrsController extends RootController
             DB::commit();
 
             return response()->json(['error' => '', 'messages' => 'Data (' . $newId . ')' . ($itemId > 0 ? 'Updated' : 'Created') . ')  Successfully']);
-//        }
-//        catch (\Exception $ex) {
-//            DB::rollback();
-//            return response()->json(['error' => 'DB_SAVE_FAILED', 'messages' => __('Failed to save.')]);
-//        }
+        }
+        catch (\Exception $ex) {
+            DB::rollback();
+            return response()->json(['error' => 'DB_SAVE_FAILED', 'messages' => __('Failed to save.')]);
+        }
     }
 }
 
