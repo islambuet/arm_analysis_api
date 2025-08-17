@@ -31,3 +31,6 @@ define('TABLE_DISTRIBUTORS_PLAN_3YRS', $db_main.'.distributors_plan_3yrs');
 
 define('TABLE_INCENTIVE_SLABS', $db_main.'.incentive_slabs');
 define('TABLE_INCENTIVE_VARIETIES', $db_main.'.incentive_varieties');
+
+define('TABLE_TYPE_MONTHS_COLOR', $db_main.'.type_months_color');
+define('TABLE_TYPE_MONTHS', $db_main.'.type_months');
