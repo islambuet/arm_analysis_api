@@ -45,10 +45,9 @@ class IncentiveVarietiesController extends RootController
             $query->addSelect('crop_types.name as crop_type_name');
             $query->join(TABLE_CROPS.' as crops', 'crops.id', '=', 'crop_types.crop_id');
             $query->addSelect('crops.name as crop_name');
-
             $response['varieties'] =$query->get();
             $response['incentive_slabs'] = DB::table(TABLE_INCENTIVE_SLABS)
-                ->select('id', 'name')
+                ->select('id', 'name','fiscal_year')
                 ->orderBy('id', 'ASC')
                 ->where('status', SYSTEM_STATUS_ACTIVE)
                 ->get();
@@ -58,8 +57,7 @@ class IncentiveVarietiesController extends RootController
             return response()->json(['error' => 'ACCESS_DENIED', 'messages' => __('You do not have access on this page')]);
         }
     }
-
-    public function getItems(Request $request): JsonResponse
+    public function getItems(Request $request,$fiscalYear): JsonResponse
     {
         if ($this->permissions->action_0 == 1) {
             $current_fiscal_year=date("Y");
@@ -68,6 +66,7 @@ class IncentiveVarietiesController extends RootController
             }
             $results = DB::table(TABLE_INCENTIVE_VARIETIES)
                 ->select('id', 'variety_id','incentive')
+                ->where('fiscal_year', $fiscalYear)
                 ->get();
             $response = [];
             $response['error'] ='';
@@ -84,13 +83,13 @@ class IncentiveVarietiesController extends RootController
             return response()->json(['error' => 'ACCESS_DENIED', 'messages' => __('You do not have access on this page')]);
         }
     }
-
-    public function getItem(Request $request, $itemId): JsonResponse
+    public function getItem(Request $request,$fiscalYear, $itemId): JsonResponse
     {
         if ($this->permissions->action_0 == 1) {
             $result = DB::table(TABLE_INCENTIVE_VARIETIES)
                 ->select('id', 'variety_id','incentive')
                 ->where('variety_id','=',$itemId)
+                ->where('fiscal_year', $fiscalYear)
                 ->first();
             $response = [];
             $response['error'] ='';
@@ -103,7 +102,6 @@ class IncentiveVarietiesController extends RootController
             return response()->json(['error' => 'ACCESS_DENIED', 'messages' => __('You do not have access on this page')]);
         }
     }
-
     public function saveItem(Request $request): JsonResponse
     {
         if( ($this->permissions->action_2 != 1) ||($this->permissions->action_1 != 1)) {
@@ -114,6 +112,7 @@ class IncentiveVarietiesController extends RootController
         $this->checkSaveToken();
         //Input validation start
         $validation_rule = [];
+        $validation_rule['fiscal_year'] = ['required','numeric'];
         $validation_rule['variety_id'] = ['required','numeric'];
         $validation_rule['incentive'] = ['required'];
         $itemNew = $request->input('item');
@@ -127,7 +126,7 @@ class IncentiveVarietiesController extends RootController
 
         $itemNew['incentive']=json_encode($itemNew['incentive']);
 
-        $result = DB::table(TABLE_INCENTIVE_VARIETIES)->where('variety_id','=',$itemNew['variety_id'])->first();
+        $result = DB::table(TABLE_INCENTIVE_VARIETIES)->where('variety_id','=',$itemNew['variety_id'])->where('fiscal_year','=',$itemNew['fiscal_year'])->first();
         if($result){
             $itemOld=(array)$result;
             $itemId=$itemOld['id'];

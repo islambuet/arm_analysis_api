@@ -31,12 +31,12 @@ class IncentiveSlabsController extends RootController
             return response()->json(['error' => 'ACCESS_DENIED', 'messages' => __('You do not have access on this page')]);
         }
     }
-
     public function getItems(Request $request): JsonResponse
     {
         if ($this->permissions->action_0 == 1) {
             $perPage = $request->input('perPage', 50);
             $query=DB::table(TABLE_INCENTIVE_SLABS);
+            $query->orderBy('fiscal_year', 'DESC');
             $query->orderBy('id', 'DESC');
             $query->where('status', '!=', SYSTEM_STATUS_DELETE);//
             if ($perPage == -1) {
@@ -82,8 +82,8 @@ class IncentiveSlabsController extends RootController
         $this->checkSaveToken();
         //Input validation start
         $validation_rule = [];
+        $validation_rule['fiscal_year'] = ['required'];
         $validation_rule['name'] = ['required'];
-        $validation_rule['ordering']=['numeric'];
         $validation_rule['status'] = [Rule::in([SYSTEM_STATUS_ACTIVE, SYSTEM_STATUS_INACTIVE])];
 
         $itemNew = $request->input('item');

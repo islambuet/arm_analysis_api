@@ -148,6 +148,7 @@ class ImportController extends Controller
                 break;
             }
             $entry = str_getcsv($line);
+            $itemNew['fiscal_year']= 2025;
             $itemNew['variety_id']= trim($entry[4]);
             $itemNew['incentive']=json_encode(["1"=>substr(trim($entry[7]),0,-1),"2"=>substr(trim($entry[8]),0,-1),"3"=>substr(trim($entry[9]),0,-1)]);
 
