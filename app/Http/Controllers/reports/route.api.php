@@ -31,3 +31,10 @@ Route::middleware('logged-user')->group(function()use ($url,$controllerClass){
     Route::match(['GET','POST'],$url.'/initialize', [$controllerClass, 'initialize']);
     Route::match(['GET','POST'],$url.'/get-items', [$controllerClass, 'getItems']);
 });
+$url='reports/incentive';
+$controllerClass= Controllers\reports\IncentiveReportController::class;
+/** @noinspection DuplicatedCode */
+Route::middleware('logged-user')->group(function()use ($url,$controllerClass){
+    Route::match(['GET','POST'],$url.'/initialize', [$controllerClass, 'initialize']);
+    Route::match(['GET','POST'],$url.'/get-items', [$controllerClass, 'getItems']);
+});
