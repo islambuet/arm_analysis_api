@@ -27,6 +27,7 @@ define('TABLE_ANALYSIS_YEARS', $db_main.'.analysis_years');
 define('TABLE_MARKET_SIZE_DATA', $db_main.'.market_size_data');
 define('TABLE_DISTRIBUTORS_SALES', $db_main.'.distributors_sales');
 define('TABLE_DISTRIBUTORS_TARGETS', $db_main.'.distributors_targets');
+define('TABLE_DISTRIBUTORS_STOCK', $db_main.'.distributors_stock');
 define('TABLE_DISTRIBUTORS_PLAN_3YRS', $db_main.'.distributors_plan_3yrs');
 
 define('TABLE_INCENTIVE_SLABS', $db_main.'.incentive_slabs');
