@@ -140,9 +140,9 @@ class TypeMonthsController extends RootController
         $validation_rule = [];
         $validation_rule['territory_id'] = ['required','numeric'];
         $validation_rule['type_id'] = ['required','numeric'];
-        $validation_rule['month_start'] = ['required','numeric'];
-        $validation_rule['month_end'] = ['required','numeric'];
-
+        for($i=1;$i<13;$i++){
+            $validation_rule['month_'.$i] = ['required','numeric'];
+        }
 
         $validation_rule['status'] = [Rule::in([SYSTEM_STATUS_ACTIVE, SYSTEM_STATUS_INACTIVE])];
         $itemNew = $request->input('item');
