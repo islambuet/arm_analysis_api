@@ -64,7 +64,9 @@ class DistributorsStockController extends RootController
                 ->addSelect('crops.name as crop_name')
                 ->addSelect('crop_types.name as type_name')
                 ->where('whose', 'ARM')
-                ->orderBy('ordering', 'ASC')
+                ->orderBy('crops.ordering', 'ASC')
+                ->orderBy('crop_types.ordering', 'ASC')
+                ->orderBy('varieties.ordering', 'ASC')
                 ->get();
             $response['user_locations']=['part_id'=>$this->user->part_id,'area_id'=>$this->user->area_id,'territory_id'=>$this->user->territory_id];
             return response()->json($response);
