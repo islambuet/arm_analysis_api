@@ -253,7 +253,6 @@ class DistributorsSalesController extends RootController
         //permission checking passed
         $this->checkSaveToken();
         $itemsNew = $request->input('items');
-
         if (!$itemsNew) {
             return response()->json(['error' => 'ITEM_NOT_FOUND', 'messages' => 'No data found']);
         }
@@ -266,7 +265,8 @@ class DistributorsSalesController extends RootController
         DB::beginTransaction();
         try {
             $time = Carbon::now();
-            foreach ($itemsNew as $itemNew){
+            foreach ($itemsNew as $row){
+                $itemNew=json_decode($row,true);
                 $itemNew['created_by'] = $this->user->id;
                 $itemNew['created_at'] = $time;
                 $id_end = DB::table(TABLE_DISTRIBUTORS_SALES)->insertGetId($itemNew);
