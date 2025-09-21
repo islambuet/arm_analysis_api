@@ -253,6 +253,7 @@ class DistributorsSalesController extends RootController
         //permission checking passed
         $this->checkSaveToken();
         $itemsNew = $request->input('items');
+        $file_name = $request->input('file_name');
         if (!$itemsNew) {
             return response()->json(['error' => 'ITEM_NOT_FOUND', 'messages' => 'No data found']);
         }
@@ -275,6 +276,7 @@ class DistributorsSalesController extends RootController
             $dataHistory['table_name'] = TABLE_DISTRIBUTORS_SALES;
             $dataHistory['controller'] = (new \ReflectionClass(__CLASS__))->getShortName();
             $dataHistory['method'] = __FUNCTION__;
+            $dataHistory['file_name'] = $file_name;
             $dataHistory['id_start'] = $id_start;
             $dataHistory['id_end'] = $id_end;
             $dataHistory['created_at'] = $time;
