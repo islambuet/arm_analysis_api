@@ -15,5 +15,6 @@ define('TABLE_USER_HIDDEN_COLUMNS', $db_main.'.system_user_hidden_columns');
 
 define('TABLE_CONFIGURATIONS', $db_main.'.system_configurations');
 define('TABLE_SYSTEM_HISTORIES', $db_main.'.system_histories');
+define('TABLE_SYSTEM_HISTORIES_CSV_UPLOAD', $db_main.'.system_history_csv_upload');
 
 
