@@ -1,7 +1,6 @@
 <?php
-namespace App\Http\Controllers\reports;
+namespace App\Http\Controllers\analysis_reports;
 
-use App\Helpers\ConfigurationHelper;
 use App\Http\Controllers\RootController;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,9 +12,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 
-class SalesTargetReportController extends RootController
+class DistributorsPlan3yrsReportController extends RootController
 {
-    public $api_url = 'reports/sales_target';
+    public $api_url = 'analysis_reports/distributors_plan_3yrs';
     public $permissions;
 
     public function __construct()
@@ -85,31 +84,35 @@ class SalesTargetReportController extends RootController
             $response = [];
             $response['error'] ='';
             $options = $request->input('options');
-            $start_date=($options['fiscal_year']).'-'.ConfigurationHelper::getCurrentFiscalYearStartingMonth().'-01';
-            $end_date=($options['fiscal_year']+1).'-'.ConfigurationHelper::getCurrentFiscalYearStartingMonth().'-01';
-            $query=DB::table(TABLE_DISTRIBUTORS_SALES.' as sd');
-
+            $district_ids=[];
+            $district_ids[0]=0;
+            if($options['distributor_id']>0){
+                $results=DB::table(TABLE_LOCATION_UPAZILAS)->select('district_id','id')->where('territory_id',$options['territory_id'])->get();
+            }
+            else if($options['territory_id']>0){
+                $results=DB::table(TABLE_LOCATION_UPAZILAS)->select('district_id','id')->where('territory_id',$options['territory_id'])->get();
+                $response['market_sizes']=$results;
+            }
+            /*$query=DB::table(TABLE_DISTRIBUTORS_SALES.' as sd');
+            $query->select('sd.*');
+            $query->join(TABLE_DISTRIBUTORS.' as d', 'd.id', '=', 'sd.distributor_id');
+            //$query->addSelect('d.territory_id as territory_id');
+            $query->join(TABLE_LOCATION_TERRITORIES.' as territories', 'territories.id', '=', 'd.territory_id');
+            $query->addSelect('territories.id as territory_id');
+            $query->join(TABLE_LOCATION_AREAS.' as areas', 'areas.id', '=', 'territories.area_id');
+            $query->addSelect('areas.id as area_id','areas.part_id');
+            //$query->join(TABLE_LOCATION_PARTS.' as parts', 'parts.id', '=', 'areas.part_id');
+            //$query->addSelect('parts.id as part_id');
             $query->join(TABLE_PACK_SIZES.' as ps', 'ps.id', '=', 'sd.pack_size_id');
+            //$query->addSelect('ps.id as pack_size_id');
             $query->join(TABLE_VARIETIES.' as varieties', 'varieties.id', '=', 'ps.variety_id');
-            $query->join(TABLE_CROP_TYPES.' as crop_types', 'crop_types.id', '=', 'varieties.crop_type_id');
-            $query->join(TABLE_DISTRIBUTORS.' as d', 'd.id', '=', 'sd.distributor_id');
-            $query->join(TABLE_LOCATION_TERRITORIES.' as territories', 'territories.id', '=', 'd.territory_id');
-            $query->join(TABLE_LOCATION_AREAS.' as areas', 'areas.id', '=', 'territories.area_id');
-
-            $query->select(DB::raw('SUM(quantity) as quantity'),DB::raw('SUM(amount) as amount'));
             $query->addSelect('varieties.id as variety_id');
+            $query->join(TABLE_CROP_TYPES.' as crop_types', 'crop_types.id', '=', 'varieties.crop_type_id');
+            $query->addSelect('crop_types.id as crop_type_id','crop_types.crop_id');
+            //$query->join(TABLE_CROPS.' as crops', 'crops.id', '=', 'crop_types.crop_id');
+            //$query->addSelect('crops.id as crop_id');
 
-            $query->where('sd.sales_at','>=',$start_date);
-            $query->where('sd.sales_at','<',$end_date);
-            if($options['crop_id']>0){
-                $query->where('crop_types.crop_id','=',$options['crop_id']);
-                if($options['crop_type_id']>0){
-                    $query->where('crop_types.id','=',$options['crop_type_id']);
-                    if($options['variety_id']>0){
-                        $query->where('varieties.id','=',$options['variety_id']);
-                    }
-                }
-            }
+            $query->where('sd.status', '!=', SYSTEM_STATUS_DELETE);
             if($options['part_id']>0){
                 $query->where('areas.part_id','=',$options['part_id']);
                 if($options['area_id']>0){
@@ -122,49 +125,34 @@ class SalesTargetReportController extends RootController
                     }
                 }
             }
-            $query->groupBy('varieties.id');
-
-            $results=$query->get();
-            $response['sales']=$results;
-
-            $query=DB::table(TABLE_DISTRIBUTORS_TARGETS.' as sd');
-            $query->join(TABLE_VARIETIES.' as varieties', 'varieties.id', '=', 'sd.variety_id');
-            $query->join(TABLE_CROP_TYPES.' as crop_types', 'crop_types.id', '=', 'varieties.crop_type_id');
-            $query->join(TABLE_DISTRIBUTORS.' as d', 'd.id', '=', 'sd.distributor_id');
-            $query->join(TABLE_LOCATION_TERRITORIES.' as territories', 'territories.id', '=', 'd.territory_id');
-            $query->join(TABLE_LOCATION_AREAS.' as areas', 'areas.id', '=', 'territories.area_id');
-
-            $query->select(DB::raw('SUM(quantity) as quantity'));
-            $query->addSelect('varieties.id as variety_id');
-
-            $query->where('sd.fiscal_year','=',$options['fiscal_year']);
             if($options['crop_id']>0){
                 $query->where('crop_types.crop_id','=',$options['crop_id']);
                 if($options['crop_type_id']>0){
                     $query->where('crop_types.id','=',$options['crop_type_id']);
                     if($options['variety_id']>0){
                         $query->where('varieties.id','=',$options['variety_id']);
-                    }
-                }
-            }
-            if($options['part_id']>0){
-                $query->where('areas.part_id','=',$options['part_id']);
-                if($options['area_id']>0){
-                    $query->where('areas.id','=',$options['area_id']);
-                    if($options['territory_id']>0){
-                        $query->where('territories.id','=',$options['territory_id']);
-                        if($options['distributor_id']>0){
-                            $query->where('d.id','=',$options['distributor_id']);
+                        if($options['pack_size_id']>0){
+                            $query->where('ps.id','=',$options['pack_size_id']);
                         }
                     }
                 }
             }
-            $query->groupBy('varieties.id');
+            if($options['sales_from']){
+                //$query->where('sd.sales_at','>=',$options['sales_from'].' 00:00:00');
+                $query->whereDate('sd.sales_at','>=',$options['sales_from']);
+            }
+            if($options['sales_to']){
+                //$query->where('sd.sales_at','<=',$options['sales_to'].' 23:59:59');
+                $query->whereDate('sd.sales_at','<=',$options['sales_to']);
+            }
+            if($options['month']>0){
+                $query->whereMonth('sd.sales_at','=',$options['month']);
+            }
+
             $results=$query->get();
-            $response['target']=$results;
 
-
-            //$response['items']=[];
+            $response['items']=$results;*/
+            $response['items']=[];
             return response()->json($response);
         } else {
             return response()->json(['error' => 'ACCESS_DENIED', 'messages' => __('You do not have access on this page')]);

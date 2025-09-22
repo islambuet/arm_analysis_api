@@ -1,5 +1,5 @@
 <?php
-namespace App\Http\Controllers\reports;
+namespace App\Http\Controllers\analysis_reports;
 
 use App\Http\Controllers\RootController;
 use Illuminate\Http\JsonResponse;
@@ -12,9 +12,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 
-class DistributorsPlan3yrsReportController extends RootController
+class SalesReportController extends RootController
 {
-    public $api_url = 'reports/distributors_plan_3yrs';
+    public $api_url = 'analysis_reports/sales';
     public $permissions;
 
     public function __construct()
@@ -31,11 +31,6 @@ class DistributorsPlan3yrsReportController extends RootController
             $response['permissions']=$this->permissions;
             $response['hidden_columns']=TaskHelper::getHiddenColumns($this->api_url,$this->user);
 
-            $response['analysis_years'] = DB::table(TABLE_ANALYSIS_YEARS)
-                ->select('id', 'name')
-                ->orderBy('ordering', 'ASC')
-                ->where('status', SYSTEM_STATUS_ACTIVE)
-                ->get();
             $response['location_parts'] = DB::table(TABLE_LOCATION_PARTS)
                 ->select('id', 'name', 'status')
                 ->orderBy('name', 'ASC')
@@ -84,16 +79,8 @@ class DistributorsPlan3yrsReportController extends RootController
             $response = [];
             $response['error'] ='';
             $options = $request->input('options');
-            $district_ids=[];
-            $district_ids[0]=0;
-            if($options['distributor_id']>0){
-                $results=DB::table(TABLE_LOCATION_UPAZILAS)->select('district_id','id')->where('territory_id',$options['territory_id'])->get();
-            }
-            else if($options['territory_id']>0){
-                $results=DB::table(TABLE_LOCATION_UPAZILAS)->select('district_id','id')->where('territory_id',$options['territory_id'])->get();
-                $response['market_sizes']=$results;
-            }
-            /*$query=DB::table(TABLE_DISTRIBUTORS_SALES.' as sd');
+
+            $query=DB::table(TABLE_DISTRIBUTORS_SALES.' as sd');
             $query->select('sd.*');
             $query->join(TABLE_DISTRIBUTORS.' as d', 'd.id', '=', 'sd.distributor_id');
             //$query->addSelect('d.territory_id as territory_id');
@@ -151,8 +138,7 @@ class DistributorsPlan3yrsReportController extends RootController
 
             $results=$query->get();
 
-            $response['items']=$results;*/
-            $response['items']=[];
+            $response['items']=$results;
             return response()->json($response);
         } else {
             return response()->json(['error' => 'ACCESS_DENIED', 'messages' => __('You do not have access on this page')]);

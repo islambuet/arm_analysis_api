@@ -1,5 +1,5 @@
 <?php
-namespace App\Http\Controllers\research;
+namespace App\Http\Controllers\analysis_data_entry;
 
 use App\Helpers\ConfigurationHelper;
 use App\Http\Controllers\RootController;
@@ -15,7 +15,7 @@ use Illuminate\Validation\Rule;
 
 class DistributorsStockController extends RootController
 {
-    public $api_url = 'research/distributors_stock';
+    public $api_url = 'analysis_data_entry/distributors_stock';
     public $permissions;
 
     public function __construct()

@@ -1,5 +1,5 @@
 <?php
-namespace App\Http\Controllers\research;
+namespace App\Http\Controllers\analysis_data_entry;
 
 use App\Http\Controllers\RootController;
 use Illuminate\Http\JsonResponse;
@@ -12,9 +12,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 
-class DistributorsSalesController extends RootController
+class DistributorsTargetsController extends RootController
 {
-    public $api_url = 'research/distributors_sales';
+    public $api_url = 'analysis_data_entry/distributors_targets';
     public $permissions;
 
     public function __construct()
@@ -31,37 +31,40 @@ class DistributorsSalesController extends RootController
             $response['permissions']=$this->permissions;
             $response['hidden_columns']=TaskHelper::getHiddenColumns($this->api_url,$this->user);
             $response['location_parts'] = DB::table(TABLE_LOCATION_PARTS)
-                ->select('id', 'name', 'status')
+                ->select('id', 'name')
                 ->orderBy('name', 'ASC')
+                ->where('status', SYSTEM_STATUS_ACTIVE)
                 ->get();
             $response['location_areas'] = DB::table(TABLE_LOCATION_AREAS)
-                ->select('id', 'name','part_id', 'status')
+                ->select('id', 'name','part_id')
                 ->orderBy('name', 'ASC')
+                ->where('status', SYSTEM_STATUS_ACTIVE)
                 ->get();
             $response['location_territories'] = DB::table(TABLE_LOCATION_TERRITORIES)
-                ->select('id', 'name','area_id', 'status')
+                ->select('id', 'name','area_id')
                 ->orderBy('name', 'ASC')
+                ->where('status', SYSTEM_STATUS_ACTIVE)
                 ->get();
             $response['distributors'] = DB::table(TABLE_DISTRIBUTORS)
-                ->select('id', 'name','territory_id', 'status')
+                ->select('id', 'name','territory_id')
                 ->orderBy('name', 'ASC')
+                ->where('status', SYSTEM_STATUS_ACTIVE)
                 ->get();
-            $response['crops'] = DB::table(TABLE_CROPS)
-                ->select('id', 'name', 'status')
+            $response['crops']  = DB::table(TABLE_CROPS)
+                ->select('id', 'name')
                 ->orderBy('ordering', 'ASC')
+                ->where('status', SYSTEM_STATUS_ACTIVE)
                 ->get();
             $response['crop_types'] = DB::table(TABLE_CROP_TYPES)
-                ->select('id', 'name','crop_id', 'status')
+                ->select('id', 'name','crop_id')
                 ->orderBy('ordering', 'ASC')
+                ->where('status', SYSTEM_STATUS_ACTIVE)
                 ->get();
-            $response['varieties']=DB::table(TABLE_VARIETIES.' as varieties')
-                ->select('varieties.*')
+            $response['varieties'] = DB::table(TABLE_VARIETIES)
+                ->select('id', 'name','crop_type_id')
+                ->orderBy('ordering', 'ASC')
+                ->where('status', SYSTEM_STATUS_ACTIVE)
                 ->where('whose', 'ARM')
-                ->orderBy('varieties.id', 'DESC')
-                ->get();
-            $response['pack_sizes'] = DB::table(TABLE_PACK_SIZES)
-                ->select('id', 'name','variety_id', 'status')
-                ->orderBy('ordering', 'ASC')
                 ->get();
             return response()->json($response);
 
@@ -75,7 +78,7 @@ class DistributorsSalesController extends RootController
         if ($this->permissions->action_0 == 1) {
             $perPage = $request->input('perPage', 50);
             //$query=DB::table(TABLE_CROP_TYPES);
-            $query=DB::table(TABLE_DISTRIBUTORS_SALES.' as sd');
+            $query=DB::table(TABLE_DISTRIBUTORS_TARGETS.' as sd');
             $query->select('sd.*');
             $query->join(TABLE_DISTRIBUTORS.' as d', 'd.id', '=', 'sd.distributor_id');
             $query->addSelect('d.name as distributor_name');
@@ -85,9 +88,7 @@ class DistributorsSalesController extends RootController
             $query->addSelect('areas.name as area_name');
             $query->join(TABLE_LOCATION_PARTS.' as parts', 'parts.id', '=', 'areas.part_id');
             $query->addSelect('parts.name as part_name');
-            $query->join(TABLE_PACK_SIZES.' as ps', 'ps.id', '=', 'sd.pack_size_id');
-            $query->addSelect('ps.name as pack_size_name');
-            $query->join(TABLE_VARIETIES.' as varieties', 'varieties.id', '=', 'ps.variety_id');
+            $query->join(TABLE_VARIETIES.' as varieties', 'varieties.id', '=', 'sd.variety_id');
             $query->addSelect('varieties.name as variety_name');
             $query->join(TABLE_CROP_TYPES.' as crop_types', 'crop_types.id', '=', 'varieties.crop_type_id');
             $query->addSelect('crop_types.name as crop_type_name');
@@ -112,7 +113,7 @@ class DistributorsSalesController extends RootController
     public function getItem(Request $request, $itemId): JsonResponse
     {
         if ($this->permissions->action_0 == 1) {
-            $query=DB::table(TABLE_DISTRIBUTORS_SALES.' as sd');
+            $query=DB::table(TABLE_DISTRIBUTORS_TARGETS.' as sd');
             $query->select('sd.*');
             $query->join(TABLE_DISTRIBUTORS.' as d', 'd.id', '=', 'sd.distributor_id');
             $query->addSelect('d.name as distributor_name');
@@ -122,9 +123,7 @@ class DistributorsSalesController extends RootController
             $query->addSelect('areas.name as area_name','areas.id as area_id');
             $query->join(TABLE_LOCATION_PARTS.' as parts', 'parts.id', '=', 'areas.part_id');
             $query->addSelect('parts.name as part_name','parts.id as part_id');
-            $query->join(TABLE_PACK_SIZES.' as ps', 'ps.id', '=', 'sd.pack_size_id');
-            $query->addSelect('ps.name as pack_size_name');
-            $query->join(TABLE_VARIETIES.' as varieties', 'varieties.id', '=', 'ps.variety_id');
+            $query->join(TABLE_VARIETIES.' as varieties', 'varieties.id', '=', 'sd.variety_id');
             $query->addSelect('varieties.name as variety_name','varieties.id as variety_id');
             $query->join(TABLE_CROP_TYPES.' as crop_types', 'crop_types.id', '=', 'varieties.crop_type_id');
             $query->addSelect('crop_types.name as crop_type_name','crop_types.id as crop_type_id');
@@ -158,13 +157,10 @@ class DistributorsSalesController extends RootController
         $this->checkSaveToken();
         //Input validation start
         $validation_rule = [];
-        $validation_rule['sales_at'] = ['required'];
-        $validation_rule['invoice_no'] = ['required'];
+        $validation_rule['fiscal_year'] = ['required'];
         $validation_rule['distributor_id'] = ['required','numeric'];
-        $validation_rule['pack_size_id'] = ['required','numeric'];
+        $validation_rule['variety_id'] = ['required','numeric'];
         $validation_rule['quantity'] = ['required','numeric'];
-        $validation_rule['unit_price'] = ['required','numeric'];
-        $validation_rule['amount'] = ['required','numeric'];
 
 
         $validation_rule['status'] = [Rule::in([SYSTEM_STATUS_ACTIVE, SYSTEM_STATUS_INACTIVE])];
@@ -175,7 +171,7 @@ class DistributorsSalesController extends RootController
 
         //edit change checking
         if ($itemId > 0) {
-            $result = DB::table(TABLE_DISTRIBUTORS_SALES)->select(array_keys($validation_rule))->find($itemId);
+            $result = DB::table(TABLE_DISTRIBUTORS_TARGETS)->select(array_keys($validation_rule))->find($itemId);
             if (!$result) {
                 return response()->json(['error' => 'ITEM_NOT_FOUND', 'messages' => __('Invalid Id ' . $itemId)]);
             }
@@ -210,20 +206,20 @@ class DistributorsSalesController extends RootController
         try {
             $time = Carbon::now();
             $dataHistory = [];
-            $dataHistory['table_name'] = TABLE_DISTRIBUTORS_SALES;
+            $dataHistory['table_name'] = TABLE_DISTRIBUTORS_TARGETS;
             $dataHistory['controller'] = (new \ReflectionClass(__CLASS__))->getShortName();
             $dataHistory['method'] = __FUNCTION__;
             $newId = $itemId;
             if ($itemId > 0) {
                 $itemNew['updated_by'] = $this->user->id;
                 $itemNew['updated_at'] = $time;
-                DB::table(TABLE_DISTRIBUTORS_SALES)->where('id', $itemId)->update($itemNew);
+                DB::table(TABLE_DISTRIBUTORS_TARGETS)->where('id', $itemId)->update($itemNew);
                 $dataHistory['table_id'] = $itemId;
                 $dataHistory['action'] = DB_ACTION_EDIT;
             } else {
                 $itemNew['created_by'] = $this->user->id;
                 $itemNew['created_at'] = $time;
-                $newId = DB::table(TABLE_DISTRIBUTORS_SALES)->insertGetId($itemNew);
+                $newId = DB::table(TABLE_DISTRIBUTORS_TARGETS)->insertGetId($itemNew);
                 $dataHistory['table_id'] = $newId;
                 $dataHistory['action'] = DB_ACTION_ADD;
             }
@@ -239,54 +235,6 @@ class DistributorsSalesController extends RootController
             DB::commit();
 
             return response()->json(['error' => '', 'messages' => 'Data (' . $newId . ')' . ($itemId > 0 ? 'Updated' : 'Created') . ')  Successfully']);
-        }
-        catch (\Exception $ex) {
-            DB::rollback();
-            return response()->json(['error' => 'DB_SAVE_FAILED', 'messages' => __('Failed to save.')]);
-        }
-    }
-    public function saveItems(Request $request): JsonResponse
-    {
-        if ($this->permissions->action_3 != 1) {
-            return response()->json(['error' => 'ACCESS_DENIED', 'messages' => __('You do not have access')]);
-        }
-        //permission checking passed
-        $this->checkSaveToken();
-        $itemsNew = $request->input('items');
-        $file_name = $request->input('file_name');
-        if (!$itemsNew) {
-            return response()->json(['error' => 'ITEM_NOT_FOUND', 'messages' => 'No data found']);
-        }
-        $id_start=$id_end=1;
-        $result = DB::table(TABLE_DISTRIBUTORS_SALES)->select('id')->orderBy('id','DESC')->first();
-        if($result){
-            $id_start=$id_end=($result->id+1);
-        }
-
-        DB::beginTransaction();
-        try {
-            $time = Carbon::now();
-            foreach ($itemsNew as $row){
-                $itemNew=json_decode($row,true);
-                $itemNew['created_by'] = $this->user->id;
-                $itemNew['created_at'] = $time;
-                $id_end = DB::table(TABLE_DISTRIBUTORS_SALES)->insertGetId($itemNew);
-            }
-            $dataHistory = [];
-            $dataHistory['table_name'] = TABLE_DISTRIBUTORS_SALES;
-            $dataHistory['controller'] = (new \ReflectionClass(__CLASS__))->getShortName();
-            $dataHistory['method'] = __FUNCTION__;
-            $dataHistory['file_name'] = $file_name;
-            $dataHistory['id_start'] = $id_start;
-            $dataHistory['id_end'] = $id_end;
-            $dataHistory['created_at'] = $time;
-            $dataHistory['created_by'] = $this->user->id;
-            $this->dBSaveHistory($dataHistory, TABLE_SYSTEM_HISTORIES_CSV_UPLOAD);
-
-            $this->updateSaveToken();
-            DB::commit();
-
-            return response()->json(['error' => '', 'messages' => 'Data Uploaded  Successfully']);
         }
         catch (\Exception $ex) {
             DB::rollback();

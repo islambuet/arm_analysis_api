@@ -1,5 +1,5 @@
 <?php
-namespace App\Http\Controllers\reports;
+namespace App\Http\Controllers\analysis_reports;
 
 use App\Helpers\ConfigurationHelper;
 use App\Http\Controllers\RootController;
@@ -15,7 +15,7 @@ use Illuminate\Validation\Rule;
 
 class TypeMonthsReportController extends RootController
 {
-    public $api_url = 'reports/type_months';
+    public $api_url = 'analysis_reports/type_months';
     public $permissions;
 
     public function __construct()

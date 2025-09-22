@@ -1,5 +1,5 @@
 <?php
-namespace App\Http\Controllers\reports;
+namespace App\Http\Controllers\analysis_reports;
 
 use App\Http\Controllers\RootController;
 use Illuminate\Http\JsonResponse;
@@ -14,7 +14,7 @@ use Illuminate\Validation\Rule;
 
 class MarketSizeReportController extends RootController
 {
-    public $api_url = 'reports/market_size';
+    public $api_url = 'analysis_reports/market_size';
     public $permissions;
 
     public function __construct()
