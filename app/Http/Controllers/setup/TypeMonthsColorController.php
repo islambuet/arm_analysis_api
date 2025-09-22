@@ -82,9 +82,9 @@ class TypeMonthsColorController extends RootController
         $this->checkSaveToken();
         //Input validation start
         $validation_rule = [];
-        $validation_rule['purpose'] = ['required'];
-        $validation_rule['config_value'] = ['required'];
-        $validation_rule['description'] = ['nullable'];
+        $validation_rule['name'] = ['required'];
+        $validation_rule['value'] = ['required'];
+        $validation_rule['color'] = ['nullable'];
         $validation_rule['status'] = [Rule::in([SYSTEM_STATUS_ACTIVE, SYSTEM_STATUS_INACTIVE])];
 
         $itemNew = $request->input('item');
