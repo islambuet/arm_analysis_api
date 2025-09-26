@@ -31,6 +31,7 @@ Route::middleware('logged-user')->group(function()use ($url,$controllerClass){
     Route::match(['GET','POST'],$url.'/initialize', [$controllerClass, 'initialize']);
     Route::match(['GET','POST'],$url.'/get-item', [$controllerClass, 'getItem']);
     Route::post($url.'/save-item', [$controllerClass, 'saveItem']);
+    Route::post($url.'/save-items', [$controllerClass, 'saveItems']);
 });
 
 $url='analysis_data_entry/distributors_targets';

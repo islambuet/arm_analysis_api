@@ -203,5 +203,60 @@ class DistributorsStockController extends RootController
             return response()->json(['error' => 'DB_SAVE_FAILED', 'messages' => __('Failed to save.')]);
         }
     }
+    public function saveItems(Request $request): JsonResponse
+    {
+        if ($this->permissions->action_3 != 1) {
+            return response()->json(['error' => 'ACCESS_DENIED', 'messages' => __('You do not have access')]);
+        }
+        //permission checking passed
+        $this->checkSaveToken();
+        $itemsNew = $request->input('items');
+        $file_name = $request->input('file_name');
+        $fiscal_year = $request->input('fiscal_year');
+        $month = $request->input('month');
+        if (!$itemsNew) {
+            return response()->json(['error' => 'ITEM_NOT_FOUND', 'messages' => 'No data found']);
+        }
+
+        $id_start=$id_end=1;
+        $result = DB::table(TABLE_DISTRIBUTORS_STOCK)->select('id')->orderBy('id','DESC')->first();
+        if($result){
+            $id_start=$id_end=($result->id+1);
+        }
+
+        DB::beginTransaction();
+        try {
+            $time = Carbon::now();
+
+            foreach ($itemsNew as $row){
+                $itemNew=json_decode($row,true);
+                $itemNew['stock']=json_encode($itemNew['stock']);
+                $itemNew['fiscal_year'] = $fiscal_year;
+                $itemNew['month'] = $month;
+                $itemNew['created_by'] = $this->user->id;
+                $itemNew['created_at'] = $time;
+                $id_end = DB::table(TABLE_DISTRIBUTORS_STOCK)->insertGetId($itemNew);
+            }
+            $dataHistory = [];
+            $dataHistory['table_name'] = TABLE_DISTRIBUTORS_STOCK;
+            $dataHistory['controller'] = (new \ReflectionClass(__CLASS__))->getShortName();
+            $dataHistory['method'] = __FUNCTION__;
+            $dataHistory['file_name'] = $file_name;
+            $dataHistory['id_start'] = $id_start;
+            $dataHistory['id_end'] = $id_end;
+            $dataHistory['created_at'] = $time;
+            $dataHistory['created_by'] = $this->user->id;
+            $this->dBSaveHistory($dataHistory, TABLE_SYSTEM_HISTORIES_CSV_UPLOAD);
+
+            $this->updateSaveToken();
+            DB::commit();
+
+            return response()->json(['error' => '', 'messages' => 'Data Uploaded  Successfully']);
+        }
+        catch (\Exception $ex) {
+            DB::rollback();
+            return response()->json(['error' => 'DB_SAVE_FAILED', 'messages' => __('Failed to save.')]);
+        }
+    }
 }
 
