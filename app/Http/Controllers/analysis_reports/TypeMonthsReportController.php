@@ -32,11 +32,6 @@ class TypeMonthsReportController extends RootController
             $response['permissions']=$this->permissions;
             $response['hidden_columns']=TaskHelper::getHiddenColumns($this->api_url,$this->user);
 
-            $response['analysis_years'] = DB::table(TABLE_ANALYSIS_YEARS)
-                ->select('id', 'name')
-                ->orderBy('ordering', 'ASC')
-                ->where('status', SYSTEM_STATUS_ACTIVE)
-                ->get();
             $response['location_parts'] = DB::table(TABLE_LOCATION_PARTS)
                 ->select('id', 'name', 'status')
                 ->orderBy('name', 'ASC')
@@ -45,9 +40,15 @@ class TypeMonthsReportController extends RootController
                 ->select('id', 'name','part_id', 'status')
                 ->orderBy('name', 'ASC')
                 ->get();
-            $response['location_territories'] = DB::table(TABLE_LOCATION_TERRITORIES)
-                ->select('id', 'name','area_id', 'status')
-                ->orderBy('name', 'ASC')
+            $response['location_territories'] = $query=DB::table(TABLE_LOCATION_TERRITORIES.' as territories')
+                ->select('territories.*')
+                ->join(TABLE_LOCATION_AREAS.' as areas', 'areas.id', '=', 'territories.area_id')
+                ->addSelect('areas.name as area_name')
+                ->join(TABLE_LOCATION_PARTS.' as parts', 'parts.id', '=', 'areas.part_id')
+                ->addSelect('parts.name as part_name')
+                ->orderBy('parts.name', 'ASC')
+                ->orderBy('areas.name', 'ASC')
+                ->orderBy('territories.name', 'ASC')
                 ->get();
 
             $response['crops'] = DB::table(TABLE_CROPS)
@@ -55,16 +56,33 @@ class TypeMonthsReportController extends RootController
                 ->orderBy('ordering', 'ASC')
                 ->orderBy('id', 'ASC')
                 ->get();
-            $response['crop_types'] = DB::table(TABLE_CROP_TYPES)
-                ->select('id', 'name','crop_id', 'status')
-                ->orderBy('ordering', 'ASC')
-                ->orderBy('id', 'ASC')
+            $response['crop_types'] = DB::table(TABLE_CROP_TYPES.' as crop_types')
+                ->select('crop_types.*')
+                ->join(TABLE_CROPS.' as crops', 'crops.id', '=', 'crop_types.crop_id')
+                ->addSelect('crops.name as crop_name')
+                ->orderBy('crops.ordering', 'ASC')
+                ->orderBy('crops.id', 'ASC')
+                ->orderBy('crop_types.ordering', 'ASC')
+                ->orderBy('crop_types.id', 'ASC')
                 ->get();
-            $response['type_months_color']=[];
-            $results=DB::table(TABLE_TYPE_MONTHS_COLOR)->get();
-            foreach ($results as $result){
-                $response['type_months_color'][$result->purpose]=$result;
-            }
+
+            $response['varieties']=DB::table(TABLE_VARIETIES.' as varieties')
+                ->select('varieties.*')
+                ->join(TABLE_CROP_TYPES.' as crop_types', 'crop_types.id', '=', 'varieties.crop_type_id')
+                ->addSelect('crop_types.name as crop_type_name')
+                ->join(TABLE_CROPS.' as crops', 'crops.id', '=', 'crop_types.crop_id')
+                ->addSelect('crops.name as crop_name')
+                ->where('varieties.whose', '=', 'ARM')
+                ->orderBy('crops.ordering', 'ASC')
+                ->orderBy('crops.id', 'ASC')
+                ->orderBy('crop_types.ordering', 'ASC')
+                ->orderBy('crop_types.id', 'ASC')
+                ->orderBy('varieties.ordering', 'ASC')
+                ->orderBy('varieties.id', 'ASC')
+                ->get();
+            $response['type_months_color'] = DB::table(TABLE_TYPE_MONTHS_COLOR)
+                ->orderBy('value', 'ASC')
+                ->get();
 
             $response['user_locations']=['part_id'=>$this->user->part_id,'area_id'=>$this->user->area_id,'territory_id'=>$this->user->territory_id];
             return response()->json($response);
@@ -83,9 +101,9 @@ class TypeMonthsReportController extends RootController
             $query->join(TABLE_CROP_TYPES.' as crop_types', 'crop_types.id', '=', 'tm.type_id');
             $query->join(TABLE_LOCATION_TERRITORIES.' as territories', 'territories.id', '=', 'tm.territory_id');
             $query->join(TABLE_LOCATION_AREAS.' as areas', 'areas.id', '=', 'territories.area_id');
-            $query->select('tm.type_id');
+            $query->select('tm.id','tm.type_id','tm.territory_id');
             for($i=1;$i<13;$i++){
-                $query->addSelect(DB::raw('SUM(month_'.$i.') as month_'.$i));
+                $query->addSelect('month_'.$i);
             }
             if($options['crop_id']>0){
                 $query->where('crop_types.crop_id','=',$options['crop_id']);
@@ -102,8 +120,10 @@ class TypeMonthsReportController extends RootController
                     }
                 }
             }
-            //$query->groupBy('tm.territory_id');
-            $query->groupBy('tm.type_id');
+            if($options['month_status']>-1 && $options['month']>0 && $options['month']<13){
+                $query->where('month_'.$options['month'],'=',$options['month_status']);
+            }
+            $query->orderBy('tm.id', 'ASC');
             $results=$query->get();
             $response['items']=$results;
             return response()->json($response);
