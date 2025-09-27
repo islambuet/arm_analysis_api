@@ -64,7 +64,7 @@ class DistributorsStockReportController extends RootController
                 ->join(TABLE_CROP_TYPES.' as crop_types', 'crop_types.id', '=', 'varieties.crop_type_id')
                 ->addSelect('crop_types.name as type_name')
                 ->join(TABLE_CROPS.' as crops', 'crops.id', '=', 'crop_types.crop_id')
-                ->addSelect('crops.name as crop_name')
+                ->addSelect('crops.name as crop_name','crop_types.crop_id')
                 ->where('varieties.whose', '=', 'ARM')
                 ->orderBy('crops.ordering', 'ASC')
                 ->orderBy('crops.id', 'ASC')
@@ -72,6 +72,9 @@ class DistributorsStockReportController extends RootController
                 ->orderBy('crop_types.id', 'ASC')
                 ->orderBy('varieties.ordering', 'ASC')
                 ->orderBy('varieties.id', 'ASC')
+                ->get();
+            $response['type_months_color'] = DB::table(TABLE_TYPE_MONTHS_COLOR)
+                ->orderBy('value', 'ASC')
                 ->get();
             $response['user_locations']=['part_id'=>$this->user->part_id,'area_id'=>$this->user->area_id,'territory_id'=>$this->user->territory_id];
             return response()->json($response);
@@ -86,54 +89,53 @@ class DistributorsStockReportController extends RootController
             $response = [];
             $response['error'] ='';
             $options = $request->input('options');
-            //$options['distributor_id']=102;
+            //$options['distributor_id']=1;
 
             if (!($options['distributor_id']>0)) {
                 return response()->json(['error' => 'VALIDATION_FAILED', 'messages' => 'Select a Distributor']);
             }
-
-            $response['stock_open_quantity']=[];
-            $query=DB::table(TABLE_DISTRIBUTORS_STOCK.' as ds');
-            $query->select('ds.*');
-            $query->where('distributor_id','=',$options['distributor_id']);
-            $query->where('fiscal_year','=',$options['fiscal_year']);
-            $query->where('month','=',$options['month']);
-            $query->where('status', '=', SYSTEM_STATUS_ACTIVE);
-            $result = $query->first();
-            if($result){
-                if($result->stock){
-                    $response['stock_open_quantity']=json_decode($result->stock);
+            $query=DB::table(TABLE_TYPE_MONTHS.' as tm');
+            $query->join(TABLE_CROP_TYPES.' as crop_types', 'crop_types.id', '=', 'tm.type_id');
+            $query->select('tm.id','tm.type_id','tm.territory_id');
+            for($i=1;$i<13;$i++){
+                $query->addSelect('month_'.$i);
+            }
+            if($options['crop_id']>0){
+                $query->where('crop_types.crop_id','=',$options['crop_id']);
+                if($options['crop_type_id']>0){
+                    $query->where('crop_types.id','=',$options['crop_type_id']);
                 }
             }
-            $month_next=($options['month']==12?1:$options['month']+1);
-            $month_next_fiscal_year=($month_next==ConfigurationHelper::getCurrentFiscalYearStartingMonth()?$options['fiscal_year']+1:$options['fiscal_year']);
-
-            $response['stock_end_quantity']=[];
-            $query=DB::table(TABLE_DISTRIBUTORS_STOCK.' as ds');
-            $query->select('ds.*');
-            $query->where('distributor_id','=',$options['distributor_id']);
-            $query->where('fiscal_year','=',$month_next_fiscal_year);
-            $query->where('month','=',$month_next);
-            $query->where('status', '=', SYSTEM_STATUS_ACTIVE);
-            $result = $query->first();
-            if($result){
-                if($result->stock){
-                    $response['stock_end_quantity']=json_decode($result->stock);
-                }
+            $query->where('tm.territory_id','=',$options['territory_id']);
+            if($options['month_status']>-1 && $options['month']>0 && $options['month']<13){
+                $query->where('month_'.$options['month'],'=',$options['month_status']);
             }
+            $query->orderBy('tm.id', 'ASC');
+            $results=$query->get();
+            $response['type_months']=$results;
 
-            $query=DB::table(TABLE_DISTRIBUTORS_SALES.' as sd');
-            $query->join(TABLE_PACK_SIZES.' as ps', 'ps.id', '=', 'sd.pack_size_id');
-            $query->join(TABLE_VARIETIES.' as varieties', 'varieties.id', '=', 'ps.variety_id');
+            $query=DB::table(TABLE_DISTRIBUTORS_TARGETS.' as sd');
+            $query->join(TABLE_VARIETIES.' as varieties', 'varieties.id', '=', 'sd.variety_id');
+            $query->join(TABLE_CROP_TYPES.' as crop_types', 'crop_types.id', '=', 'varieties.crop_type_id');
             $query->select(DB::raw('SUM(quantity) as quantity'));
             $query->addSelect('varieties.id as variety_id');
-
-            $query->whereYear('sd.sales_at','=',($options['month']<ConfigurationHelper::getCurrentFiscalYearStartingMonth()?$options['fiscal_year']+1:$options['fiscal_year']));
-            $query->whereMonth('sd.sales_at','=',$options['month']);
+            $query->where('sd.fiscal_year','=',$options['fiscal_year']);
             $query->where('sd.distributor_id','=',$options['distributor_id']);
+            if($options['crop_id']>0){
+                $query->where('crop_types.crop_id','=',$options['crop_id']);
+                if($options['crop_type_id']>0){
+                    $query->where('crop_types.id','=',$options['crop_type_id']);
+                    if($options['variety_id']>0){
+                        $query->where('varieties.id','=',$options['variety_id']);
+                    }
+                }
+            }
             $query->groupBy('varieties.id');
             $results=$query->get();
-            $response['purchase_months']=$results;
+            $response['target']=$results;
+
+
+            $month_next=($options['month']==12?1:$options['month']+1);
 
             $query=DB::table(TABLE_DISTRIBUTORS_SALES.' as sd');
             $query->join(TABLE_PACK_SIZES.' as ps', 'ps.id', '=', 'sd.pack_size_id');
@@ -158,25 +160,54 @@ class DistributorsStockReportController extends RootController
             $response['sales']=$results;
 
 
-            $query=DB::table(TABLE_DISTRIBUTORS_TARGETS.' as sd');
-            $query->join(TABLE_VARIETIES.' as varieties', 'varieties.id', '=', 'sd.variety_id');
-            $query->join(TABLE_CROP_TYPES.' as crop_types', 'crop_types.id', '=', 'varieties.crop_type_id');
+            $query=DB::table(TABLE_DISTRIBUTORS_SALES.' as sd');
+            $query->join(TABLE_PACK_SIZES.' as ps', 'ps.id', '=', 'sd.pack_size_id');
+            $query->join(TABLE_VARIETIES.' as varieties', 'varieties.id', '=', 'ps.variety_id');
             $query->select(DB::raw('SUM(quantity) as quantity'));
             $query->addSelect('varieties.id as variety_id');
-            $query->where('sd.fiscal_year','=',$options['fiscal_year']);
+
+            $query->whereYear('sd.sales_at','=',($options['month']<ConfigurationHelper::getCurrentFiscalYearStartingMonth()?$options['fiscal_year']+1:$options['fiscal_year']));
+            $query->whereMonth('sd.sales_at','=',$options['month']);
             $query->where('sd.distributor_id','=',$options['distributor_id']);
-            if($options['crop_id']>0){
-                $query->where('crop_types.crop_id','=',$options['crop_id']);
-                if($options['crop_type_id']>0){
-                    $query->where('crop_types.id','=',$options['crop_type_id']);
-                    if($options['variety_id']>0){
-                        $query->where('varieties.id','=',$options['variety_id']);
-                    }
-                }
-            }
             $query->groupBy('varieties.id');
             $results=$query->get();
-            $response['target']=$results;
+            $response['purchase_month']=$results;
+
+
+            $response['stock_open_quantity']=[];
+            $query=DB::table(TABLE_DISTRIBUTORS_STOCK.' as ds');
+            $query->select('ds.*');
+            $query->where('distributor_id','=',$options['distributor_id']);
+            $query->where('fiscal_year','=',$options['fiscal_year']);
+            $query->where('month','=',$options['month']);
+            $query->where('status', '=', SYSTEM_STATUS_ACTIVE);
+            $result = $query->first();
+            if($result){
+                if($result->stock){
+                    $response['stock_open_quantity']=json_decode($result->stock);
+                }
+            }
+
+            $month_next_fiscal_year=($month_next==ConfigurationHelper::getCurrentFiscalYearStartingMonth()?$options['fiscal_year']+1:$options['fiscal_year']);
+
+            $response['stock_end_quantity']=[];
+            $query=DB::table(TABLE_DISTRIBUTORS_STOCK.' as ds');
+            $query->select('ds.*');
+            $query->where('distributor_id','=',$options['distributor_id']);
+            $query->where('fiscal_year','=',$month_next_fiscal_year);
+            $query->where('month','=',$month_next);
+            $query->where('status', '=', SYSTEM_STATUS_ACTIVE);
+            $result = $query->first();
+            if($result){
+                if($result->stock){
+                    $response['stock_end_quantity']=json_decode($result->stock);
+                }
+            }
+
+
+
+
+
 
             return response()->json($response);
         } else {
