@@ -26,6 +26,13 @@ Route::middleware('logged-user')->group(function()use ($url,$controllerClass){
     Route::match(['GET','POST'],$url.'/initialize', [$controllerClass, 'initialize']);
     Route::match(['GET','POST'],$url.'/get-items', [$controllerClass, 'getItems']);
 });
+$url='analysis_reports/incentive_summary';
+$controllerClass= Controllers\analysis_reports\IncentiveSummaryReportController::class;
+/** @noinspection DuplicatedCode */
+Route::middleware('logged-user')->group(function()use ($url,$controllerClass){
+    Route::match(['GET','POST'],$url.'/initialize', [$controllerClass, 'initialize']);
+    Route::match(['GET','POST'],$url.'/get-items', [$controllerClass, 'getItems']);
+});
 
 $url='analysis_reports/market_size';
 $controllerClass= Controllers\analysis_reports\MarketSizeReportController::class;
