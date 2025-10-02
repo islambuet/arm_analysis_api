@@ -32,11 +32,6 @@ class IncentiveReportController extends RootController
             $response['permissions']=$this->permissions;
             $response['hidden_columns']=TaskHelper::getHiddenColumns($this->api_url,$this->user);
 
-            $response['analysis_years'] = DB::table(TABLE_ANALYSIS_YEARS)
-                ->select('id', 'name')
-                ->orderBy('ordering', 'ASC')
-                ->where('status', SYSTEM_STATUS_ACTIVE)
-                ->get();
             $response['location_parts'] = DB::table(TABLE_LOCATION_PARTS)
                 ->select('id', 'name', 'status')
                 ->orderBy('name', 'ASC')
@@ -60,10 +55,13 @@ class IncentiveReportController extends RootController
                 ->orderBy('ordering', 'ASC')
                 ->orderBy('id', 'ASC')
                 ->get();
+
             $response['varieties']=DB::table(TABLE_VARIETIES.' as varieties')
                 ->select('varieties.*')
                 ->join(TABLE_CROP_TYPES.' as crop_types', 'crop_types.id', '=', 'varieties.crop_type_id')
+                ->addSelect('crop_types.name as crop_type_name')
                 ->join(TABLE_CROPS.' as crops', 'crops.id', '=', 'crop_types.crop_id')
+                ->addSelect('crops.name as crop_name','crop_types.crop_id')
                 ->where('varieties.whose', '=', 'ARM')
                 ->orderBy('crops.ordering', 'ASC')
                 ->orderBy('crops.id', 'ASC')

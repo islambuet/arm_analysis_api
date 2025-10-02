@@ -183,12 +183,12 @@ class IncentiveSummaryReportController extends RootController
             $location_sales_items=[];
             foreach ($results as $result){
                 $result->quantity=round($result->quantity,4);
-                $result->amount=round($result->amount,2);
+                $result->amount=round($result->amount,3);
                 $result->unit_price=0;
                 $result->unit_price_net=0;
                 if($result->quantity>0){
                     $result->unit_price=($result->amount/$result->quantity);
-                    $result->unit_price_net=round($result->unit_price-($net_sale_adjustment*$result->unit_price/100),2);
+                    $result->unit_price_net=round($result->unit_price-($net_sale_adjustment*$result->unit_price/100),3);
                 }
                 $result->quantity_target=0;
                 $location_sales_items[$result->location_id][$result->variety_id]=$result;
@@ -258,7 +258,7 @@ class IncentiveSummaryReportController extends RootController
 
                     $achievement=0;
                     if($result->quantity_target>0){
-                        $achievement=round($result->quantity*100/$result->quantity_target,2);
+                        $achievement=round($result->quantity*100/$result->quantity_target,3);
                     }
                     else if($result->quantity>0){
                         $achievement=100;
@@ -269,7 +269,7 @@ class IncentiveSummaryReportController extends RootController
                             if($achievement>=$slab->name){
                                 $incentive_data=$incentive_varieties[$variety_id]->incentive;//must exits
                                 if($incentive_data->{$slab->id}){
-                                    $amount_incentive=round($result->quantity*$result->unit_price_net*$incentive_data->{$slab->id}*$manager_incentive/10000,2);
+                                    $amount_incentive=round($result->quantity*$result->unit_price_net*$incentive_data->{$slab->id}*$manager_incentive/10000,3);
                                 }
                                 break;
                             }
