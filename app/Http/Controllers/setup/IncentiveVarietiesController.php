@@ -39,13 +39,14 @@ class IncentiveVarietiesController extends RootController
                 ->orderBy('ordering', 'ASC')
                 ->where('status', SYSTEM_STATUS_ACTIVE)
                 ->get();
-            $query=DB::table(TABLE_VARIETIES.' as varieties');
-            $query->select('varieties.*');
-            $query->join(TABLE_CROP_TYPES.' as crop_types', 'crop_types.id', '=', 'varieties.crop_type_id');
-            $query->addSelect('crop_types.name as crop_type_name');
-            $query->join(TABLE_CROPS.' as crops', 'crops.id', '=', 'crop_types.crop_id');
-            $query->addSelect('crops.name as crop_name');
-            $response['varieties'] =$query->get();
+            $response['varieties']=DB::table(TABLE_VARIETIES.' as varieties')
+                ->select('varieties.*')
+                ->join(TABLE_CROP_TYPES.' as crop_types', 'crop_types.id', '=', 'varieties.crop_type_id')
+                ->addSelect('crop_types.name as crop_type_name')
+                ->join(TABLE_CROPS.' as crops', 'crops.id', '=', 'crop_types.crop_id')
+                ->addSelect('crops.name as crop_name')
+                ->where('whose', 'ARM')
+                ->get();
             $response['incentive_slabs'] = DB::table(TABLE_INCENTIVE_SLABS)
                 ->select('id', 'name','fiscal_year')
                 ->orderBy('id', 'ASC')
