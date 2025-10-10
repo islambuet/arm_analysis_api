@@ -32,11 +32,7 @@ class SalesTargetReportController extends RootController
             $response['permissions']=$this->permissions;
             $response['hidden_columns']=TaskHelper::getHiddenColumns($this->api_url,$this->user);
 
-            $response['analysis_years'] = DB::table(TABLE_ANALYSIS_YEARS)
-                ->select('id', 'name')
-                ->orderBy('ordering', 'ASC')
-                ->where('status', SYSTEM_STATUS_ACTIVE)
-                ->get();
+
             $response['location_parts'] = DB::table(TABLE_LOCATION_PARTS)
                 ->select('id', 'name', 'status')
                 ->orderBy('name', 'ASC')
@@ -64,13 +60,17 @@ class SalesTargetReportController extends RootController
                 ->get();
             $response['varieties']=DB::table(TABLE_VARIETIES.' as varieties')
                 ->select('varieties.*')
-                ->leftJoin(TABLE_COMPETITORS.' as competitors', 'competitors.id', '=', 'varieties.competitor_id')
-                ->addSelect('competitors.name as competitor_name')
-                ->orderBy('varieties.id', 'DESC')
-                ->get();
-            $response['pack_sizes'] = DB::table(TABLE_PACK_SIZES)
-                ->select('id', 'name','variety_id', 'status')
-                ->orderBy('ordering', 'ASC')
+                ->join(TABLE_CROP_TYPES.' as crop_types', 'crop_types.id', '=', 'varieties.crop_type_id')
+                ->addSelect('crop_types.name as crop_type_name')
+                ->join(TABLE_CROPS.' as crops', 'crops.id', '=', 'crop_types.crop_id')
+                ->addSelect('crops.name as crop_name','crop_types.crop_id')
+                ->where('varieties.whose', '=', 'ARM')
+                ->orderBy('crops.ordering', 'ASC')
+                ->orderBy('crops.id', 'ASC')
+                ->orderBy('crop_types.ordering', 'ASC')
+                ->orderBy('crop_types.id', 'ASC')
+                ->orderBy('varieties.ordering', 'ASC')
+                ->orderBy('varieties.id', 'ASC')
                 ->get();
             $response['user_locations']=['part_id'=>$this->user->part_id,'area_id'=>$this->user->area_id,'territory_id'=>$this->user->territory_id];
             return response()->json($response);
