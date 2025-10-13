@@ -60,6 +60,6 @@ $controllerClass= Controllers\analysis_data_entry\TerritoriesPlan3yrsController:
 Route::middleware('logged-user')->group(function()use ($url,$controllerClass){
     Route::match(['GET','POST'],$url.'/initialize', [$controllerClass, 'initialize']);
     Route::match(['GET','POST'],$url.'/get-items', [$controllerClass, 'getItems']);
-    Route::post($url.'/get-item/{itemId}', [$controllerClass, 'getItem']);
+    Route::post($url.'/get-item', [$controllerClass, 'getItem']);
     Route::post($url.'/save-item', [$controllerClass, 'saveItem']);
 });
