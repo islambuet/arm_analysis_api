@@ -2,15 +2,6 @@
 
 use App\Http\Controllers as Controllers;
 use Illuminate\Support\Facades\Route;
-$url='setup/designations';
-$controllerClass= Controllers\setup\ModuleTasksController::class;
-/** @noinspection DuplicatedCode */
-Route::middleware('logged-user')->group(function()use ($url,$controllerClass){
-    Route::match(['GET','POST'],$url.'/initialize', [$controllerClass, 'initialize']);
-    Route::match(['GET','POST'],$url.'/get-items', [$controllerClass, 'getItems']);
-    Route::match(['GET','POST'],$url.'/get-item/{itemId}', [$controllerClass, 'getItem']);
-    Route::post($url.'/save-item', [$controllerClass, 'saveItem']);
-});
 
 $url='setup/principals';
 $controllerClass= Controllers\setup\PrincipalsController::class;
@@ -32,8 +23,8 @@ Route::middleware('logged-user')->group(function()use ($url,$controllerClass){
     Route::post($url.'/save-item', [$controllerClass, 'saveItem']);
 });
 
-$url='setup/seasons';
-$controllerClass= Controllers\setup\SeasonsController::class;
+$url='setup/dealer_types';
+$controllerClass= Controllers\setup\DealerTypesController::class;
 /** @noinspection DuplicatedCode */
 Route::middleware('logged-user')->group(function()use ($url,$controllerClass){
     Route::match(['GET','POST'],$url.'/initialize', [$controllerClass, 'initialize']);
@@ -111,6 +102,15 @@ Route::middleware('logged-user')->group(function()use ($url,$controllerClass){
 });
 $url='setup/distributor';
 $controllerClass= Controllers\setup\DistributorController::class;
+/** @noinspection DuplicatedCode */
+Route::middleware('logged-user')->group(function()use ($url,$controllerClass){
+    Route::match(['GET','POST'],$url.'/initialize', [$controllerClass, 'initialize']);
+    Route::match(['GET','POST'],$url.'/get-items', [$controllerClass, 'getItems']);
+    Route::match(['GET','POST'],$url.'/get-item/{itemId}', [$controllerClass, 'getItem']);
+    Route::post($url.'/save-item', [$controllerClass, 'saveItem']);
+});
+$url='setup/dealers';
+$controllerClass= Controllers\setup\DealersController::class;
 /** @noinspection DuplicatedCode */
 Route::middleware('logged-user')->group(function()use ($url,$controllerClass){
     Route::match(['GET','POST'],$url.'/initialize', [$controllerClass, 'initialize']);
@@ -211,3 +211,4 @@ Route::middleware('logged-user')->group(function()use ($url,$controllerClass){
     Route::post($url.'/save-item', [$controllerClass, 'saveItem']);
     Route::post($url.'/save-items', [$controllerClass, 'saveItems']);
 });
+
