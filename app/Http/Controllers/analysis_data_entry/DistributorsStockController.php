@@ -109,9 +109,9 @@ class DistributorsStockController extends RootController
     public function saveItem(Request $request): JsonResponse
     {
 
-        if( ($this->permissions->action_2 != 1) ||($this->permissions->action_1 != 1)) {
-            return response()->json(['error' => 'ACCESS_DENIED', 'messages' => __('You do not have access')]);
-        }
+//        if( ($this->permissions->action_2 != 1) && ($this->permissions->action_1 != 1)) {
+//            return response()->json(['error' => 'ACCESS_DENIED', 'messages' => __('You do not have access')]);
+//        }
 
         //permission checking passed
         $this->checkSaveToken();
@@ -132,6 +132,9 @@ class DistributorsStockController extends RootController
 
         if(isset($itemNew['stock'])){
             $itemNew['stock']=json_encode($itemNew['stock']);
+        }
+        else{
+            return response()->json(['error' => 'VALIDATION_FAILED', 'messages' => 'Stock Inputs was Not found']);
         }
 
         $query=DB::table(TABLE_DISTRIBUTORS_STOCK.' as ds');
@@ -161,7 +164,15 @@ class DistributorsStockController extends RootController
             return response()->json(['error' => 'VALIDATION_FAILED', 'messages' => 'Nothing was Changed']);
         }
         if($itemId==0){
+            if ($this->permissions->action_1 != 1) {
+                return response()->json(['error' => 'VALIDATION_FAILED', 'messages' => __('You do not have add access')]);
+            }
             $this->validateInputValues($itemNew, $validation_rule);
+        }
+        else{
+            if ($this->permissions->action_2 != 1) {
+                return response()->json(['error' => 'VALIDATION_FAILED', 'messages' => __('You do not have edit access')]);
+            }
         }
 
         DB::beginTransaction();
