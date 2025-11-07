@@ -75,37 +75,88 @@ class DistributorsStockController extends RootController
             return response()->json(['error' => 'ACCESS_DENIED', 'messages' => __('You do not have access on this page')]);
         }
     }
-
-    public function getItem(Request $request): JsonResponse
+    public function getItems(Request $request): JsonResponse
     {
-
         if ($this->permissions->action_0 == 1) {
-            $itemNew = $request->input('item');
-            $response = [];
-            $response['error'] ='';
-            $response['item']=[];
+            $perPage = $request->input('perPage', 50);
+            //$query=DB::table(TABLE_CROP_TYPES);
             $query=DB::table(TABLE_DISTRIBUTORS_STOCK.' as ds');
             $query->select('ds.*');
-            $query->where('distributor_id','=',$itemNew['distributor_id']);
-            $query->where('fiscal_year','=',$itemNew['fiscal_year']);
-            $query->where('month','=',$itemNew['month']);
-            $query->where('status', '=', SYSTEM_STATUS_ACTIVE);
-            $result = $query->first();
-            if($result){
-                if($result->stock){
-                    $result->stock=json_decode($result->stock);
-                    $response['item']=$result;
-                }
+            $query->join(TABLE_DISTRIBUTORS.' as d', 'd.id', '=', 'ds.distributor_id');
+            $query->addSelect('d.name as distributor_name');
+            $query->join(TABLE_LOCATION_TERRITORIES.' as territories', 'territories.id', '=', 'd.territory_id');
+            $query->addSelect('territories.name as territory_name');
+            $query->join(TABLE_LOCATION_AREAS.' as areas', 'areas.id', '=', 'territories.area_id');
+            $query->addSelect('areas.name as area_name');
+            $query->join(TABLE_LOCATION_PARTS.' as parts', 'parts.id', '=', 'areas.part_id');
+            $query->addSelect('parts.name as part_name');
 
+            $query->orderBy('ds.id', 'DESC');
+            $query->where('ds.status', '!=', SYSTEM_STATUS_DELETE);
+            if ($perPage == -1) {
+                $perPage = $query->count();
+                if($perPage<1){
+                    $perPage=50;
+                }
             }
-            return response()->json($response);
+            $results = $query->paginate($perPage)->toArray();
+            return response()->json(['error'=>'','items'=>$results]);
         } else {
             return response()->json(['error' => 'ACCESS_DENIED', 'messages' => __('You do not have access on this page')]);
         }
     }
 
 
-
+    public function getItem(Request $request, $itemId): JsonResponse
+    {
+        if ($this->permissions->action_0 == 1) {
+            $response = [];
+            $response['error'] = '';
+            $response['item'] = [];
+            if($itemId>0){
+                $query=DB::table(TABLE_DISTRIBUTORS_STOCK.' as ds');
+                $query->select('ds.*');
+                $query->join(TABLE_DISTRIBUTORS.' as d', 'd.id', '=', 'ds.distributor_id');
+                $query->addSelect('d.name as distributor_name');
+                $query->join(TABLE_LOCATION_TERRITORIES.' as territories', 'territories.id', '=', 'd.territory_id');
+                $query->addSelect('territories.name as territory_name','territories.id as territory_id');
+                $query->join(TABLE_LOCATION_AREAS.' as areas', 'areas.id', '=', 'territories.area_id');
+                $query->addSelect('areas.name as area_name','areas.id as area_id');
+                $query->join(TABLE_LOCATION_PARTS.' as parts', 'parts.id', '=', 'areas.part_id');
+                $query->addSelect('parts.name as part_name','parts.id as part_id');
+                $query->where('ds.id','=',$itemId);
+                $result = $query->first();
+                if (!$result) {
+                    return response()->json(['error' => 'ITEM_NOT_FOUND', 'messages' => __('Invalid Id ' . $itemId)]);
+                }
+                else{
+                    if ($result->stock) {
+                        $result->stock = json_decode($result->stock);
+                        $response['item'] = $result;
+                    }
+                }
+            }
+            else {
+                $itemNew = $request->input('item');
+                $query = DB::table(TABLE_DISTRIBUTORS_STOCK . ' as ds');
+                $query->select('ds.*');
+                $query->where('distributor_id', '=', $itemNew['distributor_id']);
+                $query->where('fiscal_year', '=', $itemNew['fiscal_year']);
+                $query->where('month', '=', $itemNew['month']);
+                $query->where('status', '=', SYSTEM_STATUS_ACTIVE);
+                $result = $query->first();
+                if ($result) {
+                    if ($result->stock) {
+                        $result->stock = json_decode($result->stock);
+                        $response['item'] = $result;
+                    }
+                }
+            }
+            return response()->json($response);
+        } else {
+            return response()->json(['error' => 'ACCESS_DENIED', 'messages' => __('You do not have access on this page')]);
+        }
+    }
     public function saveItem(Request $request): JsonResponse
     {
 
