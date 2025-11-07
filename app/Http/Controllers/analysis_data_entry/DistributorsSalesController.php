@@ -247,7 +247,7 @@ class DistributorsSalesController extends RootController
     }
     public function saveItems(Request $request): JsonResponse
     {
-        if ($this->permissions->action_3 != 1) {
+        if ($this->permissions->action_7 != 1) {
             return response()->json(['error' => 'ACCESS_DENIED', 'messages' => __('You do not have access')]);
         }
         //permission checking passed
