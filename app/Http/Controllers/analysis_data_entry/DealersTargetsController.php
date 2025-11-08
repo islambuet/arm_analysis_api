@@ -13,9 +13,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 
-class DealersStockController extends RootController
+class DealersTargetsController extends RootController
 {
-    public $api_url = 'analysis_data_entry/dealers_stock';
+    public $api_url = 'analysis_data_entry/dealers_targets';
     public $permissions;
 
     public function __construct()
@@ -84,7 +84,7 @@ class DealersStockController extends RootController
         if ($this->permissions->action_0 == 1) {
             $perPage = $request->input('perPage', 50);
             //$query=DB::table(TABLE_CROP_TYPES);
-            $query=DB::table(TABLE_DEALERS_STOCK.' as ds');
+            $query=DB::table(TABLE_DEALERS_TARGETS.' as ds');
             $query->select('ds.*');
             $query->join(TABLE_DEALERS.' as dealers', 'dealers.id', '=', 'ds.dealer_id');
             $query->addSelect('dealers.name as dealer_name');
@@ -120,7 +120,7 @@ class DealersStockController extends RootController
             $response['error'] = '';
             $response['item'] = [];
             if($itemId>0){
-                $query=DB::table(TABLE_DEALERS_STOCK.' as ds');
+                $query=DB::table(TABLE_DEALERS_TARGETS.' as ds');
                 $query->select('ds.*');
                 $query->join(TABLE_DEALERS.' as dealers', 'dealers.id', '=', 'ds.dealer_id');
                 $query->addSelect('dealers.name as dealer_name');
@@ -146,11 +146,10 @@ class DealersStockController extends RootController
             }
             else {
                 $itemNew = $request->input('item');
-                $query = DB::table(TABLE_DEALERS_STOCK . ' as ds');
+                $query = DB::table(TABLE_DEALERS_TARGETS . ' as ds');
                 $query->select('ds.*');
                 $query->where('dealer_id', '=', $itemNew['dealer_id']);
                 $query->where('fiscal_year', '=', $itemNew['fiscal_year']);
-                $query->where('month', '=', $itemNew['month']);
                 $query->where('status', '=', SYSTEM_STATUS_ACTIVE);
                 $result = $query->first();
                 if ($result) {
@@ -173,7 +172,6 @@ class DealersStockController extends RootController
         $validation_rule = [];
         $validation_rule['dealer_id'] = ['required','numeric'];
         $validation_rule['fiscal_year'] = ['required','numeric'];
-        $validation_rule['month'] = ['required','numeric'];
         $validation_rule['varieties'] = ['required'];
 
         $itemNew = $request->input('item');
@@ -188,14 +186,13 @@ class DealersStockController extends RootController
             $itemNew['varieties']=json_encode($itemNew['varieties']);
         }
         else{
-            return response()->json(['error' => 'VALIDATION_FAILED', 'messages' => 'No varieties added']);
+            return response()->json(['error' => 'VALIDATION_FAILED', 'messages' => 'No varieties added.']);
         }
 
-        $query=DB::table(TABLE_DEALERS_STOCK.' as ds');
+        $query=DB::table(TABLE_DEALERS_TARGETS.' as ds');
         $query->select('ds.*');
         $query->where('dealer_id','=',$itemNew['dealer_id']);
         $query->where('fiscal_year','=',$itemNew['fiscal_year']);
-        $query->where('month','=',$itemNew['month']);
         $query->where('status', '=', SYSTEM_STATUS_ACTIVE);
         $result = $query->first();
         if($result){
@@ -233,20 +230,20 @@ class DealersStockController extends RootController
         try {
             $time = Carbon::now();
             $dataHistory = [];
-            $dataHistory['table_name'] = TABLE_DEALERS_STOCK;
+            $dataHistory['table_name'] = TABLE_DEALERS_TARGETS;
             $dataHistory['controller'] = (new \ReflectionClass(__CLASS__))->getShortName();
             $dataHistory['method'] = __FUNCTION__;
             $newId = $itemId;
             if ($itemId > 0) {
                 $itemNew['updated_by'] = $this->user->id;
                 $itemNew['updated_at'] = $time;
-                DB::table(TABLE_DEALERS_STOCK)->where('id', $itemId)->update($itemNew);
+                DB::table(TABLE_DEALERS_TARGETS)->where('id', $itemId)->update($itemNew);
                 $dataHistory['table_id'] = $itemId;
                 $dataHistory['action'] = DB_ACTION_EDIT;
             } else {
                 $itemNew['created_by'] = $this->user->id;
                 $itemNew['created_at'] = $time;
-                $newId = DB::table(TABLE_DEALERS_STOCK)->insertGetId($itemNew);
+                $newId = DB::table(TABLE_DEALERS_TARGETS)->insertGetId($itemNew);
                 $dataHistory['table_id'] = $newId;
                 $dataHistory['action'] = DB_ACTION_ADD;
             }
@@ -278,13 +275,12 @@ class DealersStockController extends RootController
         $itemsNew = $request->input('items');
         $file_name = $request->input('file_name');
         $fiscal_year = $request->input('fiscal_year');
-        $month = $request->input('month');
         if (!$itemsNew) {
             return response()->json(['error' => 'ITEM_NOT_FOUND', 'messages' => 'No data found']);
         }
 
         $id_start=$id_end=1;
-        $result = DB::table(TABLE_DEALERS_STOCK)->select('id')->orderBy('id','DESC')->first();
+        $result = DB::table(TABLE_DEALERS_TARGETS)->select('id')->orderBy('id','DESC')->first();
         if($result){
             $id_start=$id_end=($result->id+1);
         }
@@ -297,13 +293,12 @@ class DealersStockController extends RootController
                 $itemNew=json_decode($row,true);
                 $itemNew['varieties']=json_encode($itemNew['varieties']);
                 $itemNew['fiscal_year'] = $fiscal_year;
-                $itemNew['month'] = $month;
                 $itemNew['created_by'] = $this->user->id;
                 $itemNew['created_at'] = $time;
-                $id_end = DB::table(TABLE_DEALERS_STOCK)->insertGetId($itemNew);
+                $id_end = DB::table(TABLE_DEALERS_TARGETS)->insertGetId($itemNew);
             }
             $dataHistory = [];
-            $dataHistory['table_name'] = TABLE_DEALERS_STOCK;
+            $dataHistory['table_name'] = TABLE_DEALERS_TARGETS;
             $dataHistory['controller'] = (new \ReflectionClass(__CLASS__))->getShortName();
             $dataHistory['method'] = __FUNCTION__;
             $dataHistory['file_name'] = $file_name;
