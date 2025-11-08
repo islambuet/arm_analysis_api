@@ -34,6 +34,10 @@ define('TABLE_DISTRIBUTORS_STOCK', $db_main.'.distributors_stock');
 define('TABLE_DISTRIBUTORS_PLAN_3YRS', $db_main.'.distributors_plan_3yrs');
 define('TABLE_TERRITORIES_PLAN_3YRS', $db_main.'.territories_plan_3yrs');
 
+define('TABLE_DEALERS_TARGETS', $db_main.'.dealers_targets');
+define('TABLE_DEALERS_SALES', $db_main.'.dealers_sales');
+define('TABLE_DEALERS_STOCK', $db_main.'.dealers_stock');
+
 define('TABLE_INCENTIVE_SLABS', $db_main.'.incentive_slabs');
 define('TABLE_INCENTIVE_CONFIGURATIONS', $db_main.'.incentive_configurations');
 define('TABLE_INCENTIVE_VARIETIES', $db_main.'.incentive_varieties');
