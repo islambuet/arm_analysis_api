@@ -130,8 +130,8 @@ class DistributorsStockController extends RootController
                     return response()->json(['error' => 'ITEM_NOT_FOUND', 'messages' => __('Invalid Id ' . $itemId)]);
                 }
                 else{
-                    if ($result->stock) {
-                        $result->stock = json_decode($result->stock);
+                    if ($result->varieties) {
+                        $result->varieties = json_decode($result->varieties);
                         $response['item'] = $result;
                     }
                 }
@@ -146,8 +146,8 @@ class DistributorsStockController extends RootController
                 $query->where('status', '=', SYSTEM_STATUS_ACTIVE);
                 $result = $query->first();
                 if ($result) {
-                    if ($result->stock) {
-                        $result->stock = json_decode($result->stock);
+                    if ($result->varieties) {
+                        $result->varieties = json_decode($result->varieties);
                         $response['item'] = $result;
                     }
                 }
@@ -159,19 +159,13 @@ class DistributorsStockController extends RootController
     }
     public function saveItem(Request $request): JsonResponse
     {
-
-//        if( ($this->permissions->action_2 != 1) && ($this->permissions->action_1 != 1)) {
-//            return response()->json(['error' => 'ACCESS_DENIED', 'messages' => __('You do not have access')]);
-//        }
-
-        //permission checking passed
         $this->checkSaveToken();
         //Input validation start
         $validation_rule = [];
         $validation_rule['distributor_id'] = ['required','numeric'];
         $validation_rule['fiscal_year'] = ['required','numeric'];
         $validation_rule['month'] = ['required','numeric'];
-        $validation_rule['stock'] = ['required'];
+        $validation_rule['varieties'] = ['required'];
 
         $itemNew = $request->input('item');
         $itemOld = [];
@@ -181,8 +175,8 @@ class DistributorsStockController extends RootController
         }
         $this->validateInputKeys($itemNew, array_keys($validation_rule));
 
-        if(isset($itemNew['stock'])){
-            $itemNew['stock']=json_encode($itemNew['stock']);
+        if(isset($itemNew['varieties'])){
+            $itemNew['varieties']=json_encode($itemNew['varieties']);
         }
         else{
             return response()->json(['error' => 'VALIDATION_FAILED', 'messages' => 'Stock Inputs was Not found']);
@@ -292,7 +286,7 @@ class DistributorsStockController extends RootController
 
             foreach ($itemsNew as $row){
                 $itemNew=json_decode($row,true);
-                $itemNew['stock']=json_encode($itemNew['stock']);
+                $itemNew['varieties']=json_encode($itemNew['varieties']);
                 $itemNew['fiscal_year'] = $fiscal_year;
                 $itemNew['month'] = $month;
                 $itemNew['created_by'] = $this->user->id;

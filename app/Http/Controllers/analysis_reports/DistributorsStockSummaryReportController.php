@@ -172,8 +172,8 @@ class DistributorsStockSummaryReportController extends RootController
             $response['stock_open_quantity']=[];
             foreach ($results as $result){
                 if($result){
-                    if($result->stock){
-                        $stock=json_decode($result->stock);
+                    if($result->varieties){
+                        $stock=json_decode($result->varieties);
                         foreach ($stock as $variety_id=>$quantity){
                             if(isset($response['stock_open_quantity'][$variety_id])){
                                 if(isset($response['stock_open_quantity'][$variety_id][$result->{$location_key}])){
@@ -223,8 +223,8 @@ class DistributorsStockSummaryReportController extends RootController
             $response['stock_end_quantity']=[];
             foreach ($results as $result){
                 if($result){
-                    if($result->stock){
-                        $stock=json_decode($result->stock);
+                    if($result->varieties){
+                        $stock=json_decode($result->varieties);
                         foreach ($stock as $variety_id=>$quantity){
                             if(isset($response['stock_end_quantity'][$variety_id])){
                                 if(isset($response['stock_end_quantity'][$variety_id][$result->{$location_key}])){
