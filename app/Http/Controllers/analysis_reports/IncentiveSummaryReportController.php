@@ -125,6 +125,7 @@ class IncentiveSummaryReportController extends RootController
                 }
                 $incentive_varieties[$result->variety_id]=$result;
             }
+            //sales start
             $start_date=($options['fiscal_year']).'-'.ConfigurationHelper::getCurrentFiscalYearStartingMonth().'-01';
             $end_date=($options['fiscal_year']+1).'-'.ConfigurationHelper::getCurrentFiscalYearStartingMonth().'-01';
             $query=DB::table(TABLE_DISTRIBUTORS_SALES.' as sd');
@@ -193,59 +194,55 @@ class IncentiveSummaryReportController extends RootController
                 $result->quantity_target=0;
                 $location_sales_items[$result->location_id][$result->variety_id]=$result;
             }
-
-            $query=DB::table(TABLE_DISTRIBUTORS_TARGETS.' as sd');
-            $query->join(TABLE_VARIETIES.' as varieties', 'varieties.id', '=', 'sd.variety_id');
-            $query->join(TABLE_CROP_TYPES.' as crop_types', 'crop_types.id', '=', 'varieties.crop_type_id');
-            $query->join(TABLE_DISTRIBUTORS.' as d', 'd.id', '=', 'sd.distributor_id');
+            //sales end
+            //Target fiscal year start
+            $query=DB::table(TABLE_DISTRIBUTORS_TARGETS.' as ds');
+            $query->select('ds.*');
+            $query->join(TABLE_DISTRIBUTORS.' as d', 'd.id', '=', 'ds.distributor_id');
             $query->join(TABLE_LOCATION_TERRITORIES.' as territories', 'territories.id', '=', 'd.territory_id');
             $query->join(TABLE_LOCATION_AREAS.' as areas', 'areas.id', '=', 'territories.area_id');
-
-            $query->select(DB::raw('SUM(quantity) as quantity'));
-            $query->addSelect('varieties.id as variety_id');
-
-            $query->where('sd.fiscal_year','=',$options['fiscal_year']);
-            if($options['crop_id']>0){
-                $query->where('crop_types.crop_id','=',$options['crop_id']);
-                if($options['crop_type_id']>0){
-                    $query->where('crop_types.id','=',$options['crop_type_id']);
-                    if($options['variety_id']>0){
-                        $query->where('varieties.id','=',$options['variety_id']);
-                    }
-                }
-            }
+            $query->where('ds.fiscal_year','=',$options['fiscal_year']);
+            $query->where('ds.status', '=', SYSTEM_STATUS_ACTIVE);
             if($options['part_id']>0){
                 $query->where('areas.part_id','=',$options['part_id']);
                 if($options['area_id']>0){
                     $query->where('areas.id','=',$options['area_id']);
                     if($options['territory_id']>0){
                         $query->where('territories.id','=',$options['territory_id']);
+                        if($options['distributor_id']>0){
+                            $query->where('d.id','=',$options['distributor_id']);
+                        }
                     }
                 }
             }
-            $query->whereIn('varieties.id',array_keys($incentive_varieties));
             if($options['report_format']=='territory')
             {
                 $query->addSelect('territories.id as location_id');
-                $query->groupBy('territories.id');
             }
             elseif($options['report_format']=='area')
             {
                 $query->addSelect('areas.id as location_id');
-                $query->groupBy('areas.id');
             }
             elseif($options['report_format']=='part')
             {
                 $query->addSelect('areas.part_id as location_id');
-                $query->groupBy('areas.part_id');
             }
-            $query->groupBy('varieties.id');
             $results=$query->get();
-            //$response['target']=$results;
             foreach ($results as $result){
-                if(isset($location_sales_items[$result->location_id])){
-                    if(isset($location_sales_items[$result->location_id][$result->variety_id])){
-                        $location_sales_items[$result->location_id][$result->variety_id]->quantity_target=$result->quantity;
+                if($result){
+                    if($result->varieties){
+                        $stock=json_decode($result->varieties);
+                        foreach ($stock as $variety_id=>$quantity){
+                            if(is_numeric($quantity)){
+                                if(in_array($variety_id,array_keys($incentive_varieties))){
+                                    if(isset($location_sales_items[$result->location_id])){
+                                        if(isset($location_sales_items[$result->location_id][$variety_id])){
+                                            $location_sales_items[$result->location_id][$variety_id]->quantity_target+=$quantity;
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }

@@ -104,6 +104,7 @@ class IncentiveReportController extends RootController
                 }
                 $response['incentive_varieties'][$result->variety_id]=$result;
             }
+            //Sales start
             $start_date=($options['fiscal_year']).'-'.ConfigurationHelper::getCurrentFiscalYearStartingMonth().'-01';
             $end_date=($options['fiscal_year']+1).'-'.ConfigurationHelper::getCurrentFiscalYearStartingMonth().'-01';
             $query=DB::table(TABLE_DISTRIBUTORS_SALES.' as sd');
@@ -142,27 +143,19 @@ class IncentiveReportController extends RootController
 
             $results=$query->get();
             $response['sales']=$results;
+            //sales end
 
-            $query=DB::table(TABLE_DISTRIBUTORS_TARGETS.' as sd');
-            $query->join(TABLE_VARIETIES.' as varieties', 'varieties.id', '=', 'sd.variety_id');
-            $query->join(TABLE_CROP_TYPES.' as crop_types', 'crop_types.id', '=', 'varieties.crop_type_id');
-            $query->join(TABLE_DISTRIBUTORS.' as d', 'd.id', '=', 'sd.distributor_id');
+            //Target fiscal year start
+
+            $query=DB::table(TABLE_DISTRIBUTORS_TARGETS.' as ds');
+            $query->select('ds.*');
+            $query->join(TABLE_DISTRIBUTORS.' as d', 'd.id', '=', 'ds.distributor_id');
             $query->join(TABLE_LOCATION_TERRITORIES.' as territories', 'territories.id', '=', 'd.territory_id');
             $query->join(TABLE_LOCATION_AREAS.' as areas', 'areas.id', '=', 'territories.area_id');
 
-            $query->select(DB::raw('SUM(quantity) as quantity'));
-            $query->addSelect('varieties.id as variety_id');
 
-            $query->where('sd.fiscal_year','=',$options['fiscal_year']);
-            if($options['crop_id']>0){
-                $query->where('crop_types.crop_id','=',$options['crop_id']);
-                if($options['crop_type_id']>0){
-                    $query->where('crop_types.id','=',$options['crop_type_id']);
-                    if($options['variety_id']>0){
-                        $query->where('varieties.id','=',$options['variety_id']);
-                    }
-                }
-            }
+            $query->where('ds.fiscal_year','=',$options['fiscal_year']);
+            $query->where('ds.status', '=', SYSTEM_STATUS_ACTIVE);
             if($options['part_id']>0){
                 $query->where('areas.part_id','=',$options['part_id']);
                 if($options['area_id']>0){
@@ -172,9 +165,30 @@ class IncentiveReportController extends RootController
                     }
                 }
             }
-            $query->groupBy('varieties.id');
+
             $results=$query->get();
-            $response['target']=$results;
+            $response['target']=[];
+            foreach ($results as $result){
+                if($result){
+                    if($result->varieties){
+                        $stock=json_decode($result->varieties);
+                        foreach ($stock as $variety_id=>$quantity){
+                            if(is_numeric($quantity)){
+                                if(isset($response['target'][$variety_id])){
+                                    $response['target'][$variety_id]+=$quantity;
+                                }
+                                else{
+                                    $response['target'][$variety_id]=$quantity;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            //Target fiscal year end
+
+
 
 
             //$response['items']=[];
