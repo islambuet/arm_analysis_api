@@ -123,6 +123,7 @@ class PackSizeController extends RootController
         $validation_rule['name'] = ['required'];
         $validation_rule['variety_id'] = ['required','numeric'];
         $validation_rule['value'] = ['required','numeric'];
+        $validation_rule['unit_price_per_kg'] = ['required','numeric'];
         $validation_rule['ordering']=['numeric'];
         $validation_rule['status'] = [Rule::in([SYSTEM_STATUS_ACTIVE, SYSTEM_STATUS_INACTIVE])];
         $itemNew = $request->input('item');
