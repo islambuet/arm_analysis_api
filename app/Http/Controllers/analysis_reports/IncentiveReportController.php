@@ -84,29 +84,88 @@ class IncentiveReportController extends RootController
             $response = [];
             $response['error'] ='';
             $options = $request->input('options');
-            $response['incentive_configurations']=[];
+            $start_date=($options['fiscal_year']).'-'.ConfigurationHelper::getCurrentFiscalYearStartingMonth().'-01';
+            $end_date=($options['fiscal_year']+1).'-'.ConfigurationHelper::getCurrentFiscalYearStartingMonth().'-01';
+            $net_sale_adjustment=0;
+            $manager_incentive=0;
+
             $results = DB::table(TABLE_INCENTIVE_CONFIGURATIONS)->where('fiscal_year',$options['fiscal_year'])->get();
             foreach ($results as $result){
-                $response['incentive_configurations'][$result->purpose]=$result->config_value;
+                if($result->purpose=='NET_SALE_ADJUSTMENT'){
+                    $net_sale_adjustment=$result->config_value;
+                }
+                if($options['territory_id']>0){
+                    if($result->purpose=='INCENTIVE_TERRITORY'){
+                        $manager_incentive=$result->config_value;
+                    }
+                }
+                else if($options['area_id']>0){
+                    if($result->purpose=='INCENTIVE_AREA'){
+                        $manager_incentive=$result->config_value;
+                    }
+                }
+                else if($options['part_id']>0){
+                    if($result->purpose=='INCENTIVE_PART'){
+                        $manager_incentive=$result->config_value;
+                    }
+                }
+                else {
+                    if($result->purpose=='INCENTIVE_HOM'){
+                        $manager_incentive=$result->config_value;
+                    }
+                }
             }
-            $response['incentive_slabs'] = DB::table(TABLE_INCENTIVE_SLABS)
+            $response['net_sale_adjustment']=$net_sale_adjustment;
+            $response['manager_incentive']=$manager_incentive;
+
+            $incentive_slabs = DB::table(TABLE_INCENTIVE_SLABS)
                 ->select('id', 'name')
                 ->orderByRaw('CAST(name as INTEGER) DESC')
                 ->where('status', SYSTEM_STATUS_ACTIVE)
                 ->where('fiscal_year',$options['fiscal_year'])
                 ->get();
-
-            $response['incentive_varieties']=[];
+            $response['incentive_slabs']=$incentive_slabs;
+            $incentive_varieties=[];
             $results = DB::table(TABLE_INCENTIVE_VARIETIES)->where('fiscal_year',$options['fiscal_year'])->get();
             foreach ($results as $result){
                 if($result->incentive){
                     $result->incentive=json_decode($result->incentive);
                 }
-                $response['incentive_varieties'][$result->variety_id]=$result;
+                $incentive_varieties[$result->variety_id]=$result;
             }
+
+            $response['incentive_varieties']=$incentive_varieties;
+
+            //varieties unit price setup for target start
+            $results = DB::table(TABLE_PACK_SIZES)
+                ->select('variety_id')
+                ->addSelect(DB::raw('AVG(unit_price_per_kg) as unit_price_per_kg'))
+                ->where('status', SYSTEM_STATUS_ACTIVE)
+                ->groupBy('variety_id')
+                ->get();
+            $varieties_unit_price_per_kg=[];
+            foreach ($results as $result){
+                $varieties_unit_price_per_kg[$result->variety_id]=round($result->unit_price_per_kg,2);
+            }
+
+            $query=DB::table(TABLE_DISTRIBUTORS_SALES.' as sd');
+            $query->join(TABLE_PACK_SIZES.' as ps', 'ps.id', '=', 'sd.pack_size_id');
+            $query->select(DB::raw('SUM(quantity) as quantity'),DB::raw('SUM(amount) as amount'));
+            $query->addSelect('ps.variety_id as variety_id');
+            $query->where('sd.sales_at','>=',$start_date);
+            $query->where('sd.sales_at','<',$end_date);
+            $query->groupBy('ps.variety_id');
+            $results=$query->get();
+            foreach ($results as $result){
+                if($result->quantity>0){//always true
+                    $varieties_unit_price_per_kg[$result->variety_id]=round($result->amount/$result->quantity,3);
+                }
+
+            }
+            //varieties unit price setup for target end
+
             //Sales start
-            $start_date=($options['fiscal_year']).'-'.ConfigurationHelper::getCurrentFiscalYearStartingMonth().'-01';
-            $end_date=($options['fiscal_year']+1).'-'.ConfigurationHelper::getCurrentFiscalYearStartingMonth().'-01';
+
             $query=DB::table(TABLE_DISTRIBUTORS_SALES.' as sd');
 
             $query->join(TABLE_PACK_SIZES.' as ps', 'ps.id', '=', 'sd.pack_size_id');
@@ -142,7 +201,16 @@ class IncentiveReportController extends RootController
             $query->groupBy('varieties.id');
 
             $results=$query->get();
-            $response['sales']=$results;
+            $sales_targets_incentives=[];
+
+            foreach ($results as $result){
+                $item=[];
+                $item['quantity_sales']=$result->quantity;
+                $item['amount_sales']=$result->amount;
+                $item['quantity_target']=0;
+                $sales_targets_incentives[$result->variety_id]=$item;
+            }
+
             //sales end
 
             //Target fiscal year start
@@ -165,33 +233,75 @@ class IncentiveReportController extends RootController
                     }
                 }
             }
-
             $results=$query->get();
-            $response['target']=[];
             foreach ($results as $result){
                 if($result){
                     if($result->varieties){
-                        $stock=json_decode($result->varieties);
-                        foreach ($stock as $variety_id=>$quantity){
+                        $varieties=json_decode($result->varieties);
+                        foreach ($varieties as $variety_id=>$quantity){
                             if(is_numeric($quantity)){
-                                if(isset($response['target'][$variety_id])){
-                                    $response['target'][$variety_id]+=$quantity;
+                                if(!isset($sales_targets_incentives[$variety_id])){
+                                    $item=[];
+                                    $item['quantity_sales']=0;
+                                    $item['amount_sales']=0;
+                                    $item['quantity_target']=0;
+                                    $sales_targets_incentives[$variety_id]=$item;
                                 }
-                                else{
-                                    $response['target'][$variety_id]=$quantity;
-                                }
+                                $sales_targets_incentives[$variety_id]['quantity_target']+=$quantity;
                             }
                         }
                     }
                 }
             }
-
             //Target fiscal year end
 
+            //incentive calculation
+            foreach ($sales_targets_incentives as $variety_id=>$result){
+                $sales_targets_incentives[$variety_id]['unit_price']=0;
+                if(isset($varieties_unit_price_per_kg[$variety_id])){
+                    $sales_targets_incentives[$variety_id]['unit_price']=$varieties_unit_price_per_kg[$variety_id];
+                }
+                $sales_targets_incentives[$variety_id]['unit_price_net']=round($sales_targets_incentives[$variety_id]['unit_price']-($sales_targets_incentives[$variety_id]['unit_price']*$net_sale_adjustment/100),3);
+                $sales_targets_incentives[$variety_id]['amount_target']=$sales_targets_incentives[$variety_id]['quantity_target']*$sales_targets_incentives[$variety_id]['unit_price'];
+
+                $achievement=0;
+                if($sales_targets_incentives[$variety_id]['quantity_target']>0){
+                    $achievement=round($sales_targets_incentives[$variety_id]['quantity_sales']*100/$sales_targets_incentives[$variety_id]['quantity_target'],3);
+                }
+                else if($sales_targets_incentives[$variety_id]['quantity_sales']>0){
+                    $achievement=100;
+                }
+                $sales_targets_incentives[$variety_id]['achievement']=$achievement;
+
+                $quantity_incentive=0;
+                $amount_incentive=0;
+                if($achievement>0){
+                    foreach ($incentive_slabs as $slab){
+                        if($achievement>=$slab->name){
+                            $quantity_incentive=$sales_targets_incentives[$variety_id]['quantity_sales'];
+                            if(isset($incentive_varieties[$variety_id]))
+                            {
+                                $incentive_data=$incentive_varieties[$variety_id]->incentive;
+                                if($incentive_data->{$slab->id}){
+                                    $amount_incentive=round($sales_targets_incentives[$variety_id]['quantity_sales']*$sales_targets_incentives[$variety_id]['unit_price_net']*$incentive_data->{$slab->id}*$manager_incentive/10000,3);
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+
+                $sales_targets_incentives[$variety_id]['quantity_incentive']=$quantity_incentive;
+                $sales_targets_incentives[$variety_id]['amount_incentive']=$amount_incentive;
+
+            }
+            //incentive calculation end
 
 
 
-            //$response['items']=[];
+
+
+            $response['sales_targets_incentives']=$sales_targets_incentives;
             return response()->json($response);
         } else {
             return response()->json(['error' => 'ACCESS_DENIED', 'messages' => __('You do not have access on this page')]);
