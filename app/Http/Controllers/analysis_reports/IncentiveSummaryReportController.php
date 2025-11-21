@@ -89,6 +89,8 @@ class IncentiveSummaryReportController extends RootController
             $response = [];
             $response['error'] ='';
             $options = $request->input('options');
+            $start_date=($options['fiscal_year']).'-'.ConfigurationHelper::getCurrentFiscalYearStartingMonth().'-01';
+            $end_date=($options['fiscal_year']+1).'-'.ConfigurationHelper::getCurrentFiscalYearStartingMonth().'-01';
             $net_sale_adjustment=0;
             $manager_incentive=0;
             $results = DB::table(TABLE_INCENTIVE_CONFIGURATIONS)->where('fiscal_year',$options['fiscal_year'])->get();
@@ -125,9 +127,36 @@ class IncentiveSummaryReportController extends RootController
                 }
                 $incentive_varieties[$result->variety_id]=$result;
             }
+            //varieties unit price setup for target start
+            $results = DB::table(TABLE_PACK_SIZES)
+                ->select('variety_id')
+                ->addSelect(DB::raw('AVG(unit_price_per_kg) as unit_price_per_kg'))
+                ->where('status', SYSTEM_STATUS_ACTIVE)
+                ->groupBy('variety_id')
+                ->get();
+            $varieties_unit_price_per_kg=[];
+            foreach ($results as $result){
+                $varieties_unit_price_per_kg[$result->variety_id]=round($result->unit_price_per_kg,2);
+            }
+
+            $query=DB::table(TABLE_DISTRIBUTORS_SALES.' as sd');
+            $query->join(TABLE_PACK_SIZES.' as ps', 'ps.id', '=', 'sd.pack_size_id');
+            $query->select(DB::raw('SUM(quantity) as quantity'),DB::raw('SUM(amount) as amount'));
+            $query->addSelect('ps.variety_id as variety_id');
+            $query->where('sd.sales_at','>=',$start_date);
+            $query->where('sd.sales_at','<',$end_date);
+            $query->groupBy('ps.variety_id');
+            $results=$query->get();
+            foreach ($results as $result){
+                if($result->quantity>0){//always true
+                    $varieties_unit_price_per_kg[$result->variety_id]=round($result->amount/$result->quantity,3);
+                }
+
+            }
+            //varieties unit price setup for target end
+
             //sales start
-            $start_date=($options['fiscal_year']).'-'.ConfigurationHelper::getCurrentFiscalYearStartingMonth().'-01';
-            $end_date=($options['fiscal_year']+1).'-'.ConfigurationHelper::getCurrentFiscalYearStartingMonth().'-01';
+
             $query=DB::table(TABLE_DISTRIBUTORS_SALES.' as sd');
 
             $query->join(TABLE_PACK_SIZES.' as ps', 'ps.id', '=', 'sd.pack_size_id');
@@ -183,16 +212,11 @@ class IncentiveSummaryReportController extends RootController
 
             $location_sales_items=[];
             foreach ($results as $result){
-                $result->quantity=round($result->quantity,4);
-                $result->amount=round($result->amount,3);
-                $result->unit_price=0;
-                $result->unit_price_net=0;
-                if($result->quantity>0){
-                    $result->unit_price=($result->amount/$result->quantity);
-                    $result->unit_price_net=round($result->unit_price-($net_sale_adjustment*$result->unit_price/100),3);
-                }
-                $result->quantity_target=0;
-                $location_sales_items[$result->location_id][$result->variety_id]=$result;
+                $item=[];
+                $item['quantity_sales']=round($result->quantity,4);
+                $item['amount_sales']=round($result->amount,3);
+                $item['quantity_target']=0;
+                $location_sales_items[$result->location_id][$result->variety_id]=$item;
             }
             //sales end
             //Target fiscal year start
@@ -231,13 +255,13 @@ class IncentiveSummaryReportController extends RootController
             foreach ($results as $result){
                 if($result){
                     if($result->varieties){
-                        $stock=json_decode($result->varieties);
-                        foreach ($stock as $variety_id=>$quantity){
+                        $varieties=json_decode($result->varieties);
+                        foreach ($varieties as $variety_id=>$quantity){
                             if(is_numeric($quantity)){
-                                if(in_array($variety_id,array_keys($incentive_varieties))){
-                                    if(isset($location_sales_items[$result->location_id])){
-                                        if(isset($location_sales_items[$result->location_id][$variety_id])){
-                                            $location_sales_items[$result->location_id][$variety_id]->quantity_target+=$quantity;
+                                if(in_array($variety_id,array_keys($incentive_varieties))){//should have incentive configured
+                                    if(isset($location_sales_items[$result->location_id])){//must have sales
+                                        if(isset($location_sales_items[$result->location_id][$variety_id])){//must have sales
+                                            $location_sales_items[$result->location_id][$variety_id]['quantity_target']+=$quantity;
                                         }
                                     }
                                 }
@@ -254,19 +278,24 @@ class IncentiveSummaryReportController extends RootController
                 foreach ($location_data as $variety_id=>$result){
 
                     $achievement=0;
-                    if($result->quantity_target>0){
-                        $achievement=round($result->quantity*100/$result->quantity_target,3);
+                    if($result['quantity_target']>0){
+                        $achievement=round($result['quantity_sales']*100/$result['quantity_target'],3);
                     }
-                    else if($result->quantity>0){
+                    else if($result['quantity_sales']>0){
                         $achievement=100;
                     }
                     if($achievement>0){
+                        $unit_price=0;
+                        if(isset($varieties_unit_price_per_kg[$variety_id])){
+                            $unit_price=$varieties_unit_price_per_kg[$variety_id];
+                        }
+                        $unit_price_net=round($unit_price-($unit_price*$net_sale_adjustment/100),3);
                         $amount_incentive=0;
                         foreach ($incentive_slabs as $slab){
                             if($achievement>=$slab->name){
                                 $incentive_data=$incentive_varieties[$variety_id]->incentive;//must exits
                                 if($incentive_data->{$slab->id}){
-                                    $amount_incentive=round($result->quantity*$result->unit_price_net*$incentive_data->{$slab->id}*$manager_incentive/10000,3);
+                                    $amount_incentive=round($result['quantity_sales']*$unit_price_net*$incentive_data->{$slab->id}*$manager_incentive/10000,3);
                                 }
                                 break;
                             }
