@@ -294,12 +294,15 @@ class DistributorsStockReportController extends RootController
                     if($result->varieties){
                         $stock=json_decode($result->varieties);
                         foreach ($stock as $variety_id=>$quantity){
-                            if(isset($response['stock_open_quantity'][$variety_id])){
-                                $response['stock_open_quantity'][$variety_id]+=$quantity;
+                            if($quantity>0){
+                                if(isset($response['stock_open_quantity'][$variety_id])){
+                                    $response['stock_open_quantity'][$variety_id]+=$quantity;
+                                }
+                                else{
+                                    $response['stock_open_quantity'][$variety_id]=$quantity;
+                                }
                             }
-                            else{
-                                $response['stock_open_quantity'][$variety_id]=$quantity;
-                            }
+
                         }
                     }
                 }
@@ -339,11 +342,13 @@ class DistributorsStockReportController extends RootController
                     if($result->varieties){
                         $stock=json_decode($result->varieties);
                         foreach ($stock as $variety_id=>$quantity){
-                            if(isset($response['stock_end_quantity'][$variety_id])){
-                                $response['stock_end_quantity'][$variety_id]+=$quantity;
-                            }
-                            else{
-                                $response['stock_end_quantity'][$variety_id]=$quantity;
+                            if($quantity>0){
+                                if(isset($response['stock_end_quantity'][$variety_id])){
+                                    $response['stock_end_quantity'][$variety_id]+=$quantity;
+                                }
+                                else{
+                                    $response['stock_end_quantity'][$variety_id]=$quantity;
+                                }
                             }
                         }
                     }
