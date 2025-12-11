@@ -32,6 +32,7 @@ define('TABLE_MARKET_SIZE_DATA', $db_main.'.market_size_data');
 define('TABLE_DISTRIBUTORS_SALES', $db_main.'.distributors_sales');
 define('TABLE_DISTRIBUTORS_TARGETS', $db_main.'.distributors_targets');
 define('TABLE_DISTRIBUTORS_STOCK', $db_main.'.distributors_stock');
+define('TABLE_SIX_CROP_SALES_PLANNING', $db_main.'.six_crop_sales_planning');
 define('TABLE_DISTRIBUTORS_PLAN_3YRS', $db_main.'.distributors_plan_3yrs');
 define('TABLE_TERRITORIES_PLAN_3YRS', $db_main.'.territories_plan_3yrs');
 
