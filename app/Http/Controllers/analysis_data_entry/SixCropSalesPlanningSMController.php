@@ -13,9 +13,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 
-class SixCropSalesPlanningAMSController extends RootController
+class SixCropSalesPlanningSMController extends RootController
 {
-    public $api_url = 'analysis_data_entry/six_crop_sales_planning_ams';
+    public $api_url = 'analysis_data_entry/six_crop_sales_planning_sm';
     public $permissions;
 
     public function __construct()
@@ -114,6 +114,7 @@ class SixCropSalesPlanningAMSController extends RootController
             $results=DB::table(TABLE_SIX_CROP_SALES_PLANNING.' as scsp')
                 ->select(DB::raw('COUNT(type_id) as total_type_entered'))
                 ->addSelect(DB::raw('COUNT(competitor_varieties) as total_type_competitor'))
+                ->addSelect(DB::raw('COUNT(arm_varieties) as total_type_arm'))
                 ->addSelect('territory_id')
                 ->groupBy('territory_id')
                 ->where('scsp.fiscal_year','=',$fiscal_year)

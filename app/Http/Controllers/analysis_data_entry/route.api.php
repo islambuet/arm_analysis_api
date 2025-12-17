@@ -90,12 +90,12 @@ Route::middleware('logged-user')->group(function()use ($url,$controllerClass){
     Route::post($url.'/save-item', [$controllerClass, 'saveItem']);
 });
 
-$url='analysis_data_entry/six_crop_sales_planning';
-$controllerClass= Controllers\analysis_data_entry\SixCropSalesPlanningController::class;
+$url='analysis_data_entry/six_crop_sales_planning_sm';
+$controllerClass= Controllers\analysis_data_entry\SixCropSalesPlanningSMController::class;
 /** @noinspection DuplicatedCode */
 Route::middleware('logged-user')->group(function()use ($url,$controllerClass){
     Route::match(['GET','POST'],$url.'/initialize', [$controllerClass, 'initialize']);
-    Route::match(['GET','POST'],$url.'/get-items', [$controllerClass, 'getItems']);
+    Route::match(['GET','POST'],$url.'/get-items/{itemId}', [$controllerClass, 'getItems']);
     Route::match(['GET','POST'],$url.'/get-item/{itemId}', [$controllerClass, 'getItem']);
     Route::post($url.'/save-item', [$controllerClass, 'saveItem']);
 });
