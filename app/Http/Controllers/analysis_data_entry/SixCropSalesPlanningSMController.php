@@ -80,6 +80,19 @@ class SixCropSalesPlanningSMController extends RootController
                 $response['varieties_competitor_typewise_ordered'][$result->crop_type_id][]=$result;
             }
 
+            $results=DB::table(TABLE_VARIETIES.' as varieties')
+                ->select('varieties.*')
+                ->where('varieties.whose','=','ARM')
+                ->where('varieties.status', SYSTEM_STATUS_ACTIVE)
+                ->orderBy('varieties.name', 'ASC')
+                ->get();
+            $response['varieties_arm_typewise']=[];
+            $response['varieties_arm_typewise_ordered']=[];
+            foreach ($results as $result){
+                $response['varieties_arm_typewise'][$result->crop_type_id][$result->id]=$result;
+                $response['varieties_arm_typewise_ordered'][$result->crop_type_id][]=$result;
+            }
+
             $response['seasons'] = DB::table(TABLE_SEASONS)
                 ->select('*')
                 ->orderBy('ordering', 'ASC')
@@ -199,9 +212,8 @@ class SixCropSalesPlanningSMController extends RootController
         if (!$itemsNew) {
             return response()->json(['error' => 'VALIDATION_FAILED', 'messages' => 'Inputs was Not found']);
         }
-
         $results=DB::table(TABLE_SIX_CROP_SALES_PLANNING.' as scsp')
-            ->select('scsp.*')
+            ->select('scsp.arm_varieties','scsp.type_id','scsp.id')
             ->where('scsp.fiscal_year','=',$fiscal_year)
             ->where('scsp.season_id','=',$season_id)
             ->where('scsp.territory_id','=',$territory_id)
@@ -214,42 +226,18 @@ class SixCropSalesPlanningSMController extends RootController
 
         $rows=[];
         foreach ($itemsNew as $type_id=>$info){
-            $row=[];
-            $row['fiscal_year']=$fiscal_year;
-            $row['season_id']=$season_id;
-            $row['territory_id']=$territory_id;
-            $row['type_id']=$type_id;
-            $row['market_size_total']=$info['market_size_total'];
-            $row['pocket_market']=$info['pocket_market'];
-
-            $row['competitor_varieties']=null;
-            if(isset($info['competitor_varieties'])){
-                $row['competitor_varieties']=json_encode($info['competitor_varieties']);
-            }
-            //final list for add edit
-            if(isset($data_previous[$type_id])){
-                $itemNew=$row;
-                $itemOld = (array)$data_previous[$type_id];
-                $old_id=$itemOld['id'];
-                foreach ($itemOld as $key => $oldValue) {
-                    if (array_key_exists($key, $itemNew)) {
-                        if ($oldValue == $itemNew[$key]) {
-                            //unchanged so remove from both
-                            unset($itemNew[$key]);
-                            unset($itemOld[$key]);
-                            unset($row[$key]);
-                        }
-                    } else {
-                        //only for select query keys
-                        unset($itemOld[$key]);
+            if(isset($info['arm_varieties'])){
+                if(isset($data_previous[$type_id])){
+                    $itemOld = (array)$data_previous[$type_id];
+                    $old_id=$itemOld['id'];
+                    $row=[];
+                    $row['arm_varieties']=json_encode($info['arm_varieties']);
+                    if($row['arm_varieties']!=$itemOld['arm_varieties'])
+                    {
+                        $rows[]=['id'=>$old_id,'ItemOld'=>$itemOld,'ItemNew'=>$row];
                     }
+
                 }
-                if ($itemNew) {
-                    $rows[]=['id'=>$old_id,'ItemOld'=>$itemOld,'ItemNew'=>$row];
-                }
-            }
-            else{
-                $rows[]=['id'=>0,'ItemOld'=>[],'ItemNew'=>$row];
             }
         }
         if(sizeof($rows)>0){
@@ -275,11 +263,6 @@ class SixCropSalesPlanningSMController extends RootController
                         DB::table(TABLE_SIX_CROP_SALES_PLANNING)->where('id', $row['id'])->update($itemNew);
 
                         $this->dBSaveHistory($dataHistory, TABLE_SYSTEM_HISTORIES);
-                    }
-                    else{
-                        $itemNew['created_by'] = $this->user->id;
-                        $itemNew['created_at'] = $time;
-                        DB::table(TABLE_SIX_CROP_SALES_PLANNING)->insertGetId($itemNew);
                     }
                 }
                 $this->updateSaveToken();

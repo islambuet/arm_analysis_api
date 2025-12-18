@@ -80,6 +80,19 @@ class SixCropSalesPlanningAMSController extends RootController
                 $response['varieties_competitor_typewise_ordered'][$result->crop_type_id][]=$result;
             }
 
+            $results=DB::table(TABLE_VARIETIES.' as varieties')
+                ->select('varieties.*')
+                ->where('varieties.whose','=','ARM')
+                ->where('varieties.status', SYSTEM_STATUS_ACTIVE)
+                ->orderBy('varieties.name', 'ASC')
+                ->get();
+            $response['varieties_arm_typewise']=[];
+            $response['varieties_arm_typewise_ordered']=[];
+            foreach ($results as $result){
+                $response['varieties_arm_typewise'][$result->crop_type_id][$result->id]=$result;
+                $response['varieties_arm_typewise_ordered'][$result->crop_type_id][]=$result;
+            }
+
             $response['seasons'] = DB::table(TABLE_SEASONS)
                 ->select('*')
                 ->orderBy('ordering', 'ASC')
@@ -114,6 +127,7 @@ class SixCropSalesPlanningAMSController extends RootController
             $results=DB::table(TABLE_SIX_CROP_SALES_PLANNING.' as scsp')
                 ->select(DB::raw('COUNT(type_id) as total_type_entered'))
                 ->addSelect(DB::raw('COUNT(competitor_varieties) as total_type_competitor'))
+                ->addSelect(DB::raw('COUNT(arm_varieties) as total_type_arm'))
                 ->addSelect('territory_id')
                 ->groupBy('territory_id')
                 ->where('scsp.fiscal_year','=',$fiscal_year)
