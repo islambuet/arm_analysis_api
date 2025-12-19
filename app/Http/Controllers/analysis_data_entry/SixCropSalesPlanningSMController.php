@@ -11,6 +11,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 use Illuminate\Validation\Rule;
+use function PHPUnit\Framework\isNull;
 
 
 class SixCropSalesPlanningSMController extends RootController
@@ -176,6 +177,10 @@ class SixCropSalesPlanningSMController extends RootController
                 {
                     $result->competitor_varieties=json_decode($result->competitor_varieties);
                 }
+                if($result->arm_varieties)
+                {
+                    $result->arm_varieties=json_decode($result->arm_varieties);
+                }
                 $response['data'][$result->type_id]=$result;
             }
             return response()->json($response);
@@ -209,9 +214,7 @@ class SixCropSalesPlanningSMController extends RootController
         $this->checkSaveToken();
 
         $itemsNew = $request->input('items');
-        if (!$itemsNew) {
-            return response()->json(['error' => 'VALIDATION_FAILED', 'messages' => 'Inputs was Not found']);
-        }
+
         $results=DB::table(TABLE_SIX_CROP_SALES_PLANNING.' as scsp')
             ->select('scsp.arm_varieties','scsp.type_id','scsp.id')
             ->where('scsp.fiscal_year','=',$fiscal_year)
@@ -225,18 +228,23 @@ class SixCropSalesPlanningSMController extends RootController
 
 
         $rows=[];
-        foreach ($itemsNew as $type_id=>$info){
-            if(isset($info['arm_varieties'])){
-                if(isset($data_previous[$type_id])){
-                    $itemOld = (array)$data_previous[$type_id];
-                    $old_id=$itemOld['id'];
-                    $row=[];
-                    $row['arm_varieties']=json_encode($info['arm_varieties']);
-                    if($row['arm_varieties']!=$itemOld['arm_varieties'])
-                    {
-                        $rows[]=['id'=>$old_id,'ItemOld'=>$itemOld,'ItemNew'=>$row];
-                    }
+        foreach ($data_previous as $type_id=>$info){
+            $itemOld=(array)$info;
+            $old_id=$itemOld['id'];
 
+            if(isset($itemsNew[$type_id])){
+                $row=[];
+                $row['arm_varieties']=json_encode($itemsNew[$type_id]['arm_varieties']);
+                if($row['arm_varieties']!=$itemOld['arm_varieties'])
+                {
+                    $rows[]=['id'=>$old_id,'ItemOld'=>$itemOld,'ItemNew'=>$row];
+                }
+            }
+            else{
+                if(!is_null($itemOld['arm_varieties'])){
+                    $row=[];
+                    $row['arm_varieties']=null;
+                    $rows[]=['id'=>$old_id,'ItemOld'=>$itemOld,'ItemNew'=>$row];
                 }
             }
         }

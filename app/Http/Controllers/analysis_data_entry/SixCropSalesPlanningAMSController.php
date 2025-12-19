@@ -176,6 +176,10 @@ class SixCropSalesPlanningAMSController extends RootController
                 {
                     $result->competitor_varieties=json_decode($result->competitor_varieties);
                 }
+                if($result->arm_varieties)
+                {
+                    $result->arm_varieties=json_decode($result->arm_varieties);
+                }
                 $response['data'][$result->type_id]=$result;
             }
             return response()->json($response);
