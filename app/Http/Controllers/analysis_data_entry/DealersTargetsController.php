@@ -96,9 +96,19 @@ class DealersTargetsController extends RootController
             $query->addSelect('areas.name as area_name');
             $query->join(TABLE_LOCATION_PARTS.' as parts', 'parts.id', '=', 'areas.part_id');
             $query->addSelect('parts.name as part_name');
+            if($this->user->part_id>0){
+                $query->where('parts.id', $this->user->part_id);
+                if($this->user->area_id>0){
+                    $query->where('areas.id', $this->user->area_id);
+                    if($this->user->territory_id>0){
+                        $query->where('territories.id', $this->user->territory_id);
+                    }
+                }
+            }
 
             $query->orderBy('ds.id', 'DESC');
             $query->where('ds.status', '!=', SYSTEM_STATUS_DELETE);
+
             if ($perPage == -1) {
                 $perPage = $query->count();
                 if($perPage<1){

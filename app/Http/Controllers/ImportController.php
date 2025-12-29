@@ -173,4 +173,73 @@ class ImportController extends Controller
         echo '</table>';
         echo 'Total Records: '.$num_records;
     }
+    public function market_size_setup_territory(){
+        die();
+        $query = DB::table(TABLE_LOCATION_UPAZILAS . ' as upazilas');
+        $query->select('upazilas.*');
+        $results = $query->get();
+        $upazilas=[];
+        $district_territory=[];
+        $items=[];
+        foreach ($results as $result) {
+            $upazilas[$result->id]=$result;
+            $district_territory[$result->district_id][$result->territory_id]=$result->territory_id;
+
+            $items[$result->territory_id]=[];
+        }
+
+
+        $query=DB::table(TABLE_MARKET_SIZE_DATA.' as ad');
+        $query->select('ad.*');
+        $results=$query->get();
+        foreach ($results as $result) {
+            if (strlen($result->upazila_market_size) > 1) {
+                $temp = explode(",", $result->upazila_market_size);
+                foreach ($temp as $t) {
+                    if (str_contains($t, '_')) {
+                        $upazila_id=substr($t, 0, strpos($t, "_"));
+                        $market_size=substr($t, strpos($t, "_") + 1);
+                        if($upazila_id>0){
+                            $territory_id=$upazilas[$upazila_id]->territory_id;
+                            if(isset($items[$territory_id][$result->type_id])){
+                                $items[$territory_id][$result->type_id]+=(+$market_size);
+                            }
+                            else{
+                                $items[$territory_id][$result->type_id]=(+$market_size);
+                            }
+                        }
+                        else{
+                            $district_id=$result->district_id;
+                            if(isset($district_territory[$district_id])){
+                                foreach ($district_territory[$district_id] as $territory_id){
+                                    if(isset($items[$territory_id][$result->type_id])){
+                                        $items[$territory_id][$result->type_id]+=(+$market_size);
+                                    }
+                                    else{
+                                        $items[$territory_id][$result->type_id]=(+$market_size);
+                                    }
+                                }
+                            }
+                        }
+
+
+                    }
+                }
+            }
+        }
+        $time = Carbon::now();
+        foreach ($items as $territory_id=>$info) {
+            foreach ($info as $type_id=>$market_size){
+                $itemNew=[];
+                $itemNew['fiscal_year']=2025;
+                $itemNew['type_id']=$type_id;
+                $itemNew['territory_id']=$territory_id;
+                $itemNew['market_size_total']=$market_size;
+                $itemNew['created_by'] = 1;
+                $itemNew['created_at'] = $time;
+                DB::table(TABLE_MARKET_SIZE_TERRITORY)->insertGetId($itemNew);
+            }
+        }
+        echo 'The end';
+    }
 }

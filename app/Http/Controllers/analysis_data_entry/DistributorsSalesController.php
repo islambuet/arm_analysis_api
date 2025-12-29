@@ -94,6 +94,16 @@ class DistributorsSalesController extends RootController
             $query->join(TABLE_CROPS.' as crops', 'crops.id', '=', 'crop_types.crop_id');
             $query->addSelect('crops.name as crop_name');
 
+            if($this->user->part_id>0){
+                $query->where('parts.id', $this->user->part_id);
+                if($this->user->area_id>0){
+                    $query->where('areas.id', $this->user->area_id);
+                    if($this->user->territory_id>0){
+                        $query->where('territories.id', $this->user->territory_id);
+                    }
+                }
+            }
+
             $query->orderBy('sd.id', 'DESC');
             $query->where('sd.status', '!=', SYSTEM_STATUS_DELETE);
             if ($perPage == -1) {
