@@ -252,6 +252,18 @@ class SixCropSalesPlanningAMSController extends RootController
                 {
                     $result->arm_varieties=json_decode($result->arm_varieties);
                 }
+                $result->pocket_market=[];
+                if(strlen($result->pocket_market_unions)>1){
+                    $temp_unions = explode(",", $result->pocket_market_unions);
+                    {
+                        foreach ($temp_unions as $temp_union) {
+                            if($temp_union>0){
+                                $result->pocket_market[$response['location_unions'][$temp_union]->upazila_id][]=(+$temp_union);
+                            }
+
+                        }
+                    }
+                }
                 $response['data'][$result->type_id]=$result;
             }
 
