@@ -11,7 +11,6 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 use Illuminate\Validation\Rule;
-use function PHPUnit\Framework\isNull;
 
 
 class SixCropSalesPlanningSMController extends RootController
@@ -109,6 +108,7 @@ class SixCropSalesPlanningSMController extends RootController
     public function getItems(Request $request, $itemId): JsonResponse
     {
         if ($this->permissions->action_0 == 1) {
+
             $temp= explode('_', $itemId);
             $fiscal_year=0;
             $season_id=0;
@@ -121,24 +121,51 @@ class SixCropSalesPlanningSMController extends RootController
             if(!($fiscal_year>0 && $season_id>0)){
                 return response()->json(['error' => 'VALIDATION_FAILED', 'messages' => 'Invalid Item. '.$itemId]);
             }
-            $response = [];
-            $response['error'] ='';
-            $response['items']=[];
 
-            $results=DB::table(TABLE_SIX_CROP_SALES_PLANNING.' as scsp')
-                ->select(DB::raw('COUNT(type_id) as total_type_entered'))
-                ->addSelect(DB::raw('COUNT(competitor_varieties) as total_type_competitor'))
-                ->addSelect(DB::raw('COUNT(arm_varieties) as total_type_arm'))
-                ->addSelect('territory_id')
-                ->groupBy('territory_id')
-                ->where('scsp.fiscal_year','=',$fiscal_year)
-                ->where('scsp.season_id','=',$season_id)
-                ->get();
-            foreach ($results as $result){
-                $response['items'][$result->territory_id]=$result;
+            $query=DB::table(TABLE_SIX_CROP_SALES_PLANNING.' as scsp');
+            $query->select(DB::raw('COUNT(scsp.type_id) as total_type_entered'));
+            $query->addSelect(DB::raw('COUNT(scsp.competitor_varieties) as total_type_competitor'));
+            $query->addSelect(DB::raw('COUNT(scsp.arm_varieties) as total_type_arm'));
+            $query->addSelect('scsp.territory_id','scsp.fiscal_year','scsp.season_id');
+            $query->join(TABLE_LOCATION_TERRITORIES.' as territories', 'territories.id', '=', 'scsp.territory_id');
+            $query->addSelect('territories.name as territory_name');
+            $query->join(TABLE_LOCATION_AREAS.' as areas', 'areas.id', '=', 'territories.area_id');
+            $query->addSelect('areas.name as area_name');
+            $query->join(TABLE_LOCATION_PARTS.' as parts', 'parts.id', '=', 'areas.part_id');
+            $query->addSelect('parts.name as part_name');
+
+            $query->join(TABLE_SEASONS.' as seasons', 'seasons.id', '=', 'scsp.season_id');
+            $query->addSelect('seasons.name as season_name');
+
+
+            $query->join(TABLE_CROP_TYPES.' as crop_types', 'crop_types.id', '=', 'scsp.type_id');
+            $query->addSelect(DB::raw('COUNT(DISTINCT crop_types.crop_id) as total_crop_entered'));
+
+            $query->groupBy('scsp.territory_id');
+            $query->groupBy('territories.name');
+            $query->groupBy('areas.name');
+            $query->groupBy('parts.name');
+
+            $query->groupBy('scsp.fiscal_year');
+            $query->groupBy('scsp.season_id');
+            $query->groupBy('seasons.name');
+            if($this->user->part_id>0){
+                $query->where('parts.id', $this->user->part_id);
+                if($this->user->area_id>0){
+                    $query->where('areas.id', $this->user->area_id);
+                    if($this->user->territory_id>0){
+                        $query->where('territories.id', $this->user->territory_id);
+                    }
+                }
             }
+            $query->where('scsp.fiscal_year','=',$fiscal_year);
+            $query->where('scsp.season_id','=',$season_id);
 
-            return response()->json($response);
+            //$query->orderBy('scsp.fiscal_year', 'DESC');
+            //$query->orderBy('seasons.ordering', 'DESC');
+            $query->where('scsp.status', '!=', SYSTEM_STATUS_DELETE);
+            $results = $query->get();
+            return response()->json(['error'=>'','items'=>$results]);
         } else {
             return response()->json(['error' => 'ACCESS_DENIED', 'messages' => __('You do not have access on this page')]);
         }
@@ -149,22 +176,74 @@ class SixCropSalesPlanningSMController extends RootController
             $response = [];
             $response['error'] = '';
             $response['item'] = [];
-            $temp= explode('_', $itemId);
             $fiscal_year=0;
             $season_id=0;
             $territory_id=0;
-            if(isset($temp[0])){
-                $fiscal_year=$temp[0];
+
+            if($itemId==0){
+                $item = $request->input('item');
+                $fiscal_year=$item['fiscal_year'];
+                $season_id=$item['season_id'];
+                $territory_id=$item['territory_id'];
             }
-            if(isset($temp[1])){
-                $season_id=$temp[1];
+            else{
+                $temp= explode('_', $itemId);
+
+                if(isset($temp[0])){
+                    $fiscal_year=$temp[0];
+                }
+                if(isset($temp[1])){
+                    $season_id=$temp[1];
+                }
+                if(isset($temp[2])){
+                    $territory_id=$temp[2];
+                }
             }
-            if(isset($temp[2])){
-                $territory_id=$temp[2];
-            }
+
             if(!($fiscal_year>0 && $season_id>0 && $territory_id>0)){
                 return response()->json(['error' => 'VALIDATION_FAILED', 'messages' => 'Invalid Item. '.$itemId]);
             }
+            $results= DB::table(TABLE_LOCATION_UPAZILAS)
+                ->select('id', 'name')
+                ->orderBy('name', 'ASC')
+                ->where('territory_id', $territory_id)
+                ->where('status', SYSTEM_STATUS_ACTIVE)
+                ->get();
+            $response['location_upazilas'] =[];
+            $response['location_upazilas_ordered'] =[];
+            foreach ($results as $result){
+                $response['location_upazilas'][$result->id]=$result;
+                $response['location_upazilas'][$result->id]->unions=[];
+                $response['location_upazilas_ordered'][]=$result;
+            }
+            $results=DB::table(TABLE_LOCATION_UNIONS.' as unions')
+                ->select('unions.*')
+                ->join(TABLE_LOCATION_UPAZILAS.' as upazilas', 'upazilas.id', '=', 'unions.upazila_id')
+                ->where('upazilas.territory_id', $territory_id)
+                ->orderBy('unions.name', 'ASC')
+                ->where('unions.status', SYSTEM_STATUS_ACTIVE)
+                ->get();
+            $response['location_unions']=[];
+            foreach ($results as $result){
+                $response['location_upazilas'][$result->upazila_id]->unions[]=$result;
+                $response['location_unions'][$result->id]=$result;
+            }
+
+            $results=DB::table(TABLE_MARKET_SIZE_TERRITORY.' as mst')
+                ->select('mst.*')
+                ->where('mst.fiscal_year','<=',$fiscal_year)
+                ->where('mst.territory_id','=',$territory_id)
+                ->orderBy('mst.fiscal_year','DESC')
+                ->get();
+            $response['market_size_territory'] = [];
+            foreach ($results as $result){
+                if(!isset($response['market_size_territory'][$result->type_id]))
+                {
+                    $response['market_size_territory'][$result->type_id]=$result;
+                }
+
+            }
+
             $results=DB::table(TABLE_SIX_CROP_SALES_PLANNING.' as scsp')
                 ->select('scsp.*')
                 ->where('scsp.fiscal_year','=',$fiscal_year)
@@ -181,8 +260,21 @@ class SixCropSalesPlanningSMController extends RootController
                 {
                     $result->arm_varieties=json_decode($result->arm_varieties);
                 }
+                $result->pocket_market=[];
+                if(strlen($result->pocket_market_unions)>1){
+                    $temp_unions = explode(",", $result->pocket_market_unions);
+                    {
+                        foreach ($temp_unions as $temp_union) {
+                            if($temp_union>0){
+                                $result->pocket_market[$response['location_unions'][$temp_union]->upazila_id][]=(+$temp_union);
+                            }
+
+                        }
+                    }
+                }
                 $response['data'][$result->type_id]=$result;
             }
+
             return response()->json($response);
         } else {
             return response()->json(['error' => 'ACCESS_DENIED', 'messages' => __('You do not have access on this page')]);
