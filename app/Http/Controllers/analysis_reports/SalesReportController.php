@@ -96,6 +96,7 @@ class SalesReportController extends RootController
             $response['error'] ='';
             $options = $request->input('options');
 
+            //sales start
             $query=DB::table(TABLE_DISTRIBUTORS_SALES.' as sd');
             $query->select('sd.*');
             $query->join(TABLE_DISTRIBUTORS.' as d', 'd.id', '=', 'sd.distributor_id');
@@ -153,8 +154,71 @@ class SalesReportController extends RootController
             }
 
             $results=$query->get();
+            $response['sales_gross']=$results;
+            //sales end
 
-            $response['items']=$results;
+            //sales cancel start
+
+            $query=DB::table(TABLE_DISTRIBUTORS_SALES_RETURN.' as sd');
+            $query->select('sd.*');
+            $query->join(TABLE_DISTRIBUTORS.' as d', 'd.id', '=', 'sd.distributor_id');
+            //$query->addSelect('d.territory_id as territory_id');
+            $query->join(TABLE_LOCATION_TERRITORIES.' as territories', 'territories.id', '=', 'd.territory_id');
+            $query->addSelect('territories.id as territory_id');
+            $query->join(TABLE_LOCATION_AREAS.' as areas', 'areas.id', '=', 'territories.area_id');
+            $query->addSelect('areas.id as area_id','areas.part_id');
+            //$query->join(TABLE_LOCATION_PARTS.' as parts', 'parts.id', '=', 'areas.part_id');
+            //$query->addSelect('parts.id as part_id');
+            $query->join(TABLE_PACK_SIZES.' as ps', 'ps.id', '=', 'sd.pack_size_id');
+            //$query->addSelect('ps.id as pack_size_id');
+            $query->join(TABLE_VARIETIES.' as varieties', 'varieties.id', '=', 'ps.variety_id');
+            $query->addSelect('varieties.id as variety_id');
+            $query->join(TABLE_CROP_TYPES.' as crop_types', 'crop_types.id', '=', 'varieties.crop_type_id');
+            $query->addSelect('crop_types.id as crop_type_id','crop_types.crop_id');
+            //$query->join(TABLE_CROPS.' as crops', 'crops.id', '=', 'crop_types.crop_id');
+            //$query->addSelect('crops.id as crop_id');
+
+            $query->where('sd.status', '!=', SYSTEM_STATUS_DELETE);
+            if($options['part_id']>0){
+                $query->where('areas.part_id','=',$options['part_id']);
+                if($options['area_id']>0){
+                    $query->where('areas.id','=',$options['area_id']);
+                    if($options['territory_id']>0){
+                        $query->where('territories.id','=',$options['territory_id']);
+                        if($options['distributor_id']>0){
+                            $query->where('d.id','=',$options['distributor_id']);
+                        }
+                    }
+                }
+            }
+            if($options['crop_id']>0){
+                $query->where('crop_types.crop_id','=',$options['crop_id']);
+                if($options['crop_type_id']>0){
+                    $query->where('crop_types.id','=',$options['crop_type_id']);
+                    if($options['variety_id']>0){
+                        $query->where('varieties.id','=',$options['variety_id']);
+                        if($options['pack_size_id']>0){
+                            $query->where('ps.id','=',$options['pack_size_id']);
+                        }
+                    }
+                }
+            }
+            if($options['sales_from']){
+                //$query->where('sd.sales_at','>=',$options['sales_from'].' 00:00:00');
+                $query->whereDate('sd.sales_at','>=',$options['sales_from']);
+            }
+            if($options['sales_to']){
+                //$query->where('sd.sales_at','<=',$options['sales_to'].' 23:59:59');
+                $query->whereDate('sd.sales_at','<=',$options['sales_to']);
+            }
+            if($options['month']>0){
+                $query->whereMonth('sd.sales_at','=',$options['month']);
+            }
+
+            $results=$query->get();
+            $response['sales_cancel']=$results;
+            //sales cancel end
+
             return response()->json($response);
         } else {
             return response()->json(['error' => 'ACCESS_DENIED', 'messages' => __('You do not have access on this page')]);
