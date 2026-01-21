@@ -163,12 +163,55 @@ class SalesTargetReportController extends RootController
                 $response['sales_targets'][$result->variety_id]['distributors'][$result->distributor_id]=[];
                 $response['sales_targets'][$result->variety_id]['distributors'][$result->distributor_id]['quantity_target']=0;
                 $response['sales_targets'][$result->variety_id]['distributors'][$result->distributor_id]['amount_target']=0;
-                $response['sales_targets'][$result->variety_id]['distributors'][$result->distributor_id]['quantity_sales']=$result->quantity;
-                $response['sales_targets'][$result->variety_id]['distributors'][$result->distributor_id]['amount_sales']=$result->amount;
+                $response['sales_targets'][$result->variety_id]['distributors'][$result->distributor_id]['quantity_sales_gross']=$result->quantity;
+                $response['sales_targets'][$result->variety_id]['distributors'][$result->distributor_id]['amount_sales_gross']=$result->amount;
+                $response['sales_targets'][$result->variety_id]['distributors'][$result->distributor_id]['quantity_sales_cancel']=0;
+                $response['sales_targets'][$result->variety_id]['distributors'][$result->distributor_id]['amount_sales_cancel']=0;
             }
 
             //sales end
+            //sales cancel start
 
+            $query=DB::table(TABLE_DISTRIBUTORS_SALES_RETURN.' as sd');
+
+            $query->join(TABLE_PACK_SIZES.' as ps', 'ps.id', '=', 'sd.pack_size_id');
+            $query->join(TABLE_DISTRIBUTORS.' as d', 'd.id', '=', 'sd.distributor_id');
+            $query->join(TABLE_LOCATION_TERRITORIES.' as territories', 'territories.id', '=', 'd.territory_id');
+            $query->join(TABLE_LOCATION_AREAS.' as areas', 'areas.id', '=', 'territories.area_id');
+
+            $query->select(DB::raw('SUM(quantity) as quantity'),DB::raw('SUM(amount) as amount'));
+            $query->addSelect('ps.variety_id as variety_id');
+            $query->addSelect('sd.distributor_id as distributor_id');
+
+            $query->where('sd.sales_at','>=',$start_date);
+            $query->where('sd.sales_at','<',$end_date);
+
+            if($options['part_id']>0){
+                $query->where('areas.part_id','=',$options['part_id']);
+                if($options['area_id']>0){
+                    $query->where('areas.id','=',$options['area_id']);
+                    if($options['territory_id']>0){
+                        $query->where('territories.id','=',$options['territory_id']);
+                        if($options['distributor_id']>0){
+                            $query->where('d.id','=',$options['distributor_id']);
+                        }
+                    }
+                }
+            }
+            $query->groupBy('ps.variety_id');
+            $query->groupBy('sd.distributor_id');
+
+            $results=$query->get();
+            foreach ($results as $result){
+                if(isset($response['sales_targets'][$result->variety_id])){
+                    if(isset($response['sales_targets'][$result->variety_id]['distributors'][$result->distributor_id]))
+                    {
+                        $response['sales_targets'][$result->variety_id]['distributors'][$result->distributor_id]['quantity_sales_cancel']=$result->quantity;
+                        $response['sales_targets'][$result->variety_id]['distributors'][$result->distributor_id]['amount_sales_cancel']=$result->amount;
+                    }
+                }
+            }
+            //sales cancel end
             //Target fiscal year start
 
             $query=DB::table(TABLE_DISTRIBUTORS_TARGETS.' as ds');
@@ -218,8 +261,10 @@ class SalesTargetReportController extends RootController
                                     $response['sales_targets'][$variety_id]['distributors'][$result->distributor_id]=[];
                                     $response['sales_targets'][$variety_id]['distributors'][$result->distributor_id]['quantity_target']=$quantity;
                                     $response['sales_targets'][$variety_id]['distributors'][$result->distributor_id]['amount_target']=$quantity*$response['sales_targets'][$variety_id]['unit_price'];
-                                    $response['sales_targets'][$variety_id]['distributors'][$result->distributor_id]['quantity_sales']=0;
-                                    $response['sales_targets'][$variety_id]['distributors'][$result->distributor_id]['amount_sales']=0;
+                                    $response['sales_targets'][$variety_id]['distributors'][$result->distributor_id]['quantity_sales_gross']=0;
+                                    $response['sales_targets'][$variety_id]['distributors'][$result->distributor_id]['amount_sales_gross']=0;
+                                    $response['sales_targets'][$variety_id]['distributors'][$result->distributor_id]['quantity_sales_cancel']=0;
+                                    $response['sales_targets'][$variety_id]['distributors'][$result->distributor_id]['amount_sales_cancel']=0;
                                 }
                             }
                         }
