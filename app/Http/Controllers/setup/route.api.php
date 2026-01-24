@@ -54,6 +54,15 @@ Route::middleware('logged-user')->group(function()use ($url,$controllerClass){
     Route::post($url.'/save-item', [$controllerClass, 'saveItem']);
 });
 
+$url='setup/variety_sub_types';
+$controllerClass= Controllers\setup\VarietySubTypesController::class;
+/** @noinspection DuplicatedCode */
+Route::middleware('logged-user')->group(function()use ($url,$controllerClass){
+    Route::match(['GET','POST'],$url.'/initialize', [$controllerClass, 'initialize']);
+    Route::match(['GET','POST'],$url.'/get-items', [$controllerClass, 'getItems']);
+    Route::match(['GET','POST'],$url.'/get-item/{itemId}', [$controllerClass, 'getItem']);
+    Route::post($url.'/save-item', [$controllerClass, 'saveItem']);
+});
 $url='setup/varieties';
 $controllerClass= Controllers\setup\VarietiesController::class;
 /** @noinspection DuplicatedCode */

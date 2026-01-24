@@ -10,6 +10,7 @@ define('TABLE_SEASONS', $db_main.'.seasons');
 
 define('TABLE_CROPS', $db_main.'.crops');
 define('TABLE_CROP_TYPES', $db_main.'.crop_types');
+define('TABLE_VARIETY_SUB_TYPES', $db_main.'.variety_sub_types');
 define('TABLE_VARIETIES', $db_main.'.varieties');
 define('TABLE_PACK_SIZES', $db_main.'.pack_sizes');
 
