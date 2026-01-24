@@ -46,11 +46,16 @@ class VarietiesController extends RootController
                 ->orderBy('ordering', 'ASC')
                 ->where('status', SYSTEM_STATUS_ACTIVE)
                 ->get();
+            $variety_sub_types = DB::table(TABLE_VARIETY_SUB_TYPES)
+                ->select('id', 'name', 'status')
+                ->orderBy('name', 'ASC')
+                ->get();
             return response()->json([
                 'error'=>'','permissions'=>$this->permissions,
                 'hidden_columns'=>TaskHelper::getHiddenColumns($this->api_url,$this->user),
                 'crops'=>$crops,
                 'crop_types'=>$crop_types,
+                'variety_sub_types'=>$variety_sub_types,
                 'principals'=>$principals,
                 'competitors'=>$competitors,
 
@@ -67,6 +72,8 @@ class VarietiesController extends RootController
             //$query=DB::table(TABLE_CROP_TYPES);
             $query=DB::table(TABLE_VARIETIES.' as varieties');
             $query->select('varieties.*');
+            $query->join(TABLE_VARIETY_SUB_TYPES.' as vst', 'vst.id', '=', 'varieties.variety_sub_type_id');
+            $query->addSelect('vst.name as variety_sub_type_name');
             $query->join(TABLE_CROP_TYPES.' as crop_types', 'crop_types.id', '=', 'varieties.crop_type_id');
             $query->addSelect('crop_types.name as crop_type_name');
             $query->join(TABLE_CROPS.' as crops', 'crops.id', '=', 'crop_types.crop_id');
@@ -95,6 +102,8 @@ class VarietiesController extends RootController
         if ($this->permissions->action_0 == 1) {
             $query=DB::table(TABLE_VARIETIES.' as varieties');
             $query->select('varieties.*');
+            $query->join(TABLE_VARIETY_SUB_TYPES.' as vst', 'vst.id', '=', 'varieties.variety_sub_type_id');
+            $query->addSelect('vst.name as variety_sub_type_name');
             $query->join(TABLE_CROP_TYPES.' as crop_types', 'crop_types.id', '=', 'varieties.crop_type_id');
             $query->addSelect('crop_types.name as crop_type_name');
             $query->join(TABLE_CROPS.' as crops', 'crops.id', '=', 'crop_types.crop_id');
@@ -133,6 +142,7 @@ class VarietiesController extends RootController
         $validation_rule = [];
         $validation_rule['name'] = ['required'];
         $validation_rule['crop_type_id'] = ['required','numeric'];
+        $validation_rule['variety_sub_type_id'] = ['required','numeric'];
         $validation_rule['whose'] = [Rule::in(['ARM', 'Principal','Competitor'])];
         $validation_rule['principal_id']=['numeric','nullable'];
         $validation_rule['competitor_id']=['numeric','nullable'];
