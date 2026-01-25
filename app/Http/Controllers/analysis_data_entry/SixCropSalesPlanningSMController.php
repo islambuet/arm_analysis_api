@@ -82,6 +82,8 @@ class SixCropSalesPlanningSMController extends RootController
 
             $results=DB::table(TABLE_VARIETIES.' as varieties')
                 ->select('varieties.*')
+                ->join(TABLE_VARIETY_SUB_TYPES.' as vst', 'vst.id', '=', 'varieties.variety_sub_type_id')
+                ->addSelect('vst.name as variety_sub_type_name')
                 ->where('varieties.whose','=','ARM')
                 ->where('varieties.status', SYSTEM_STATUS_ACTIVE)
                 ->orderBy('varieties.name', 'ASC')
