@@ -205,76 +205,13 @@ class IncentiveReportController extends RootController
 
             foreach ($results as $result){
                 $item=[];
-                $item['quantity_sales_gross']=$result->quantity;
-                $item['amount_sales_gross']=$result->amount;
-                $item['quantity_sales_cancel']=0;
-                $item['amount_sales_cancel']=0;
+                $item['quantity_sales']=$result->quantity;
+                $item['amount_sales']=$result->amount;
                 $item['quantity_target']=0;
-                $item['amount_target']=0;
                 $sales_targets_incentives[$result->variety_id]=$item;
             }
 
             //sales end
-
-            //Sales Cancel start
-
-            $query=DB::table(TABLE_DISTRIBUTORS_SALES_RETURN.' as sd');
-
-            $query->join(TABLE_PACK_SIZES.' as ps', 'ps.id', '=', 'sd.pack_size_id');
-            $query->join(TABLE_VARIETIES.' as varieties', 'varieties.id', '=', 'ps.variety_id');
-            $query->join(TABLE_CROP_TYPES.' as crop_types', 'crop_types.id', '=', 'varieties.crop_type_id');
-            $query->join(TABLE_DISTRIBUTORS.' as d', 'd.id', '=', 'sd.distributor_id');
-            $query->join(TABLE_LOCATION_TERRITORIES.' as territories', 'territories.id', '=', 'd.territory_id');
-            $query->join(TABLE_LOCATION_AREAS.' as areas', 'areas.id', '=', 'territories.area_id');
-
-            $query->select(DB::raw('SUM(quantity) as quantity'),DB::raw('SUM(amount) as amount'));
-            $query->addSelect('varieties.id as variety_id');
-
-            $query->where('sd.sales_return_at','>=',$start_date);
-            $query->where('sd.sales_return_at','<',$end_date);
-            if($options['crop_id']>0){
-                $query->where('crop_types.crop_id','=',$options['crop_id']);
-                if($options['crop_type_id']>0){
-                    $query->where('crop_types.id','=',$options['crop_type_id']);
-                    if($options['variety_id']>0){
-                        $query->where('varieties.id','=',$options['variety_id']);
-                    }
-                }
-            }
-            if($options['part_id']>0){
-                $query->where('areas.part_id','=',$options['part_id']);
-                if($options['area_id']>0){
-                    $query->where('areas.id','=',$options['area_id']);
-                    if($options['territory_id']>0){
-                        $query->where('territories.id','=',$options['territory_id']);
-                    }
-                }
-            }
-            $query->groupBy('varieties.id');
-
-            $results=$query->get();
-            foreach ($results as $result){
-                if(isset($sales_targets_incentives[$result->variety_id]))
-                {
-                    $sales_targets_incentives[$result->variety_id]['quantity_sales_cancel']=$result->quantity;
-                    $sales_targets_incentives[$result->variety_id]['amount_sales_cancel']=$result->amount;
-
-                }
-                else{
-                    $item=[];
-                    $item['quantity_sales_gross']=0;
-                    $item['amount_sales_gross']=0;
-                    $item['quantity_sales_cancel']=$result->quantity;
-                    $item['amount_sales_cancel']=$result->amount;
-                    $item['quantity_target']=0;
-                    $item['amount_target']=0;
-                    $sales_targets_incentives[$result->variety_id]=$item;
-                }
-            }
-            //sales Cancel end
-
-
-
 
             //Target fiscal year start
 
@@ -305,12 +242,9 @@ class IncentiveReportController extends RootController
                             if(is_numeric($quantity)){
                                 if(!isset($sales_targets_incentives[$variety_id])){
                                     $item=[];
-                                    $item['quantity_sales_gross']=0;
-                                    $item['amount_sales_gross']=0;
-                                    $item['quantity_sales_cancel']=0;
-                                    $item['amount_sales_cancel']=0;
+                                    $item['quantity_sales']=0;
+                                    $item['amount_sales']=0;
                                     $item['quantity_target']=0;
-                                    $item['amount_target']=0;
                                     $sales_targets_incentives[$variety_id]=$item;
                                 }
                                 $sales_targets_incentives[$variety_id]['quantity_target']+=$quantity;
@@ -330,14 +264,11 @@ class IncentiveReportController extends RootController
                 $sales_targets_incentives[$variety_id]['unit_price_net']=round($sales_targets_incentives[$variety_id]['unit_price']-($sales_targets_incentives[$variety_id]['unit_price']*$net_sale_adjustment/100),3);
                 $sales_targets_incentives[$variety_id]['amount_target']=$sales_targets_incentives[$variety_id]['quantity_target']*$sales_targets_incentives[$variety_id]['unit_price'];
 
-                $sales_targets_incentives[$variety_id]['quantity_sales_net']=$sales_targets_incentives[$variety_id]['quantity_sales_gross']-$sales_targets_incentives[$variety_id]['quantity_sales_cancel'];
-                $sales_targets_incentives[$variety_id]['amount_sales_net']=$sales_targets_incentives[$variety_id]['amount_sales_gross']-$sales_targets_incentives[$variety_id]['amount_sales_cancel'];
-
                 $achievement=0;
                 if($sales_targets_incentives[$variety_id]['quantity_target']>0){
-                    $achievement=round($sales_targets_incentives[$variety_id]['quantity_sales_net']*100/$sales_targets_incentives[$variety_id]['quantity_target'],3);
+                    $achievement=round($sales_targets_incentives[$variety_id]['quantity_sales']*100/$sales_targets_incentives[$variety_id]['quantity_target'],3);
                 }
-                else if($sales_targets_incentives[$variety_id]['quantity_sales_net']>0){
+                else if($sales_targets_incentives[$variety_id]['quantity_sales']>0){
                     $achievement=100;
                 }
                 $sales_targets_incentives[$variety_id]['achievement']=$achievement;
@@ -347,18 +278,19 @@ class IncentiveReportController extends RootController
                 if($achievement>0){
                     foreach ($incentive_slabs as $slab){
                         if($achievement>=$slab->name){
-                            $quantity_incentive=$sales_targets_incentives[$variety_id]['quantity_sales_net'];
+                            $quantity_incentive=$sales_targets_incentives[$variety_id]['quantity_sales'];
                             if(isset($incentive_varieties[$variety_id]))
                             {
                                 $incentive_data=$incentive_varieties[$variety_id]->incentive;
                                 if($incentive_data->{$slab->id}){
-                                    $amount_incentive=round($sales_targets_incentives[$variety_id]['quantity_sales_net']*$sales_targets_incentives[$variety_id]['unit_price_net']*$incentive_data->{$slab->id}*$manager_incentive/10000,3);
+                                    $amount_incentive=round($sales_targets_incentives[$variety_id]['quantity_sales']*$sales_targets_incentives[$variety_id]['unit_price_net']*$incentive_data->{$slab->id}*$manager_incentive/10000,3);
                                 }
                             }
                             break;
                         }
                     }
                 }
+
                 $sales_targets_incentives[$variety_id]['quantity_incentive']=$quantity_incentive;
                 $sales_targets_incentives[$variety_id]['amount_incentive']=$amount_incentive;
 
