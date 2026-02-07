@@ -134,6 +134,38 @@ class DistributorsStockReportController extends RootController
                 }
             }
             //crop calendar end
+
+            //varieties unit price setup for target start
+            $start_date=($options['fiscal_year']).'-'.ConfigurationHelper::getCurrentFiscalYearStartingMonth().'-01';
+            $end_date=($options['fiscal_year']+1).'-'.ConfigurationHelper::getCurrentFiscalYearStartingMonth().'-01';
+            $results = DB::table(TABLE_PACK_SIZES)
+                ->select('variety_id')
+                ->addSelect(DB::raw('AVG(unit_price_per_kg) as unit_price_per_kg'))
+                ->where('status', SYSTEM_STATUS_ACTIVE)
+                ->groupBy('variety_id')
+                ->get();
+            $varieties_unit_price_per_kg=[];
+            foreach ($results as $result){
+                $varieties_unit_price_per_kg[$result->variety_id]=round($result->unit_price_per_kg,2);
+            }
+
+            $query=DB::table(TABLE_DISTRIBUTORS_SALES.' as sd');
+            $query->join(TABLE_PACK_SIZES.' as ps', 'ps.id', '=', 'sd.pack_size_id');
+            $query->select(DB::raw('SUM(quantity) as quantity'),DB::raw('SUM(amount) as amount'));
+            $query->addSelect('ps.variety_id as variety_id');
+            $query->where('sd.sales_at','>=',$start_date);
+            $query->where('sd.sales_at','<',$end_date);
+            $query->groupBy('ps.variety_id');
+            $results=$query->get();
+            foreach ($results as $result){
+                if($result->quantity>0){//always true
+                    $varieties_unit_price_per_kg[$result->variety_id]=round($result->amount/$result->quantity,3);
+                }
+
+            }
+            $response['varieties_unit_price_per_kg']=$varieties_unit_price_per_kg;
+            //varieties unit price setup for target end
+
             //Target fiscal year start
 
             $query=DB::table(TABLE_DISTRIBUTORS_TARGETS.' as ds');

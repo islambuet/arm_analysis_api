@@ -189,7 +189,7 @@ class IncentiveSummaryReportController extends RootController
                     }
                 }
             }
-            $query->whereIn('varieties.id',array_keys($incentive_varieties));
+            //$query->whereIn('varieties.id',array_keys($incentive_varieties));
             if($options['report_format']=='territory')
             {
                 $query->addSelect('territories.id as location_id');
@@ -213,12 +213,94 @@ class IncentiveSummaryReportController extends RootController
             $location_sales_items=[];
             foreach ($results as $result){
                 $item=[];
-                $item['quantity_sales']=round($result->quantity,4);
-                $item['amount_sales']=round($result->amount,3);
+                $item['quantity_sales_gross']=round($result->quantity,4);
+                $item['amount_sales_gross']=round($result->amount,3);
+                $item['quantity_sales_cancel']=0;
+                $item['amount_sales_cancel']=0;
                 $item['quantity_target']=0;
+                $item['amount_target']=0;
                 $location_sales_items[$result->location_id][$result->variety_id]=$item;
             }
             //sales end
+
+
+            //sales Cancel start
+
+            $query=DB::table(TABLE_DISTRIBUTORS_SALES_RETURN.' as sd');
+
+            $query->join(TABLE_PACK_SIZES.' as ps', 'ps.id', '=', 'sd.pack_size_id');
+            $query->join(TABLE_VARIETIES.' as varieties', 'varieties.id', '=', 'ps.variety_id');
+            $query->join(TABLE_CROP_TYPES.' as crop_types', 'crop_types.id', '=', 'varieties.crop_type_id');
+            $query->join(TABLE_DISTRIBUTORS.' as d', 'd.id', '=', 'sd.distributor_id');
+            $query->join(TABLE_LOCATION_TERRITORIES.' as territories', 'territories.id', '=', 'd.territory_id');
+            $query->join(TABLE_LOCATION_AREAS.' as areas', 'areas.id', '=', 'territories.area_id');
+
+            $query->select(DB::raw('SUM(quantity) as quantity'),DB::raw('SUM(amount) as amount'));
+            $query->addSelect('varieties.id as variety_id');
+
+            $query->where('sd.sales_return_at','>=',$start_date);
+            $query->where('sd.sales_return_at','<',$end_date);
+            if($options['crop_id']>0){
+                $query->where('crop_types.crop_id','=',$options['crop_id']);
+                if($options['crop_type_id']>0){
+                    $query->where('crop_types.id','=',$options['crop_type_id']);
+                    if($options['variety_id']>0){
+                        $query->where('varieties.id','=',$options['variety_id']);
+                    }
+                }
+            }
+            if($options['part_id']>0){
+                $query->where('areas.part_id','=',$options['part_id']);
+                if($options['area_id']>0){
+                    $query->where('areas.id','=',$options['area_id']);
+                    if($options['territory_id']>0){
+                        $query->where('territories.id','=',$options['territory_id']);
+                    }
+                }
+            }
+            //$query->whereIn('varieties.id',array_keys($incentive_varieties));
+            if($options['report_format']=='territory')
+            {
+                $query->addSelect('territories.id as location_id');
+                $query->groupBy('territories.id');
+            }
+            elseif($options['report_format']=='area')
+            {
+                $query->addSelect('areas.id as location_id');
+                $query->groupBy('areas.id');
+            }
+            elseif($options['report_format']=='part')
+            {
+                $query->addSelect('areas.part_id as location_id');
+                $query->groupBy('areas.part_id');
+            }
+            $query->groupBy('varieties.id');
+
+            $results=$query->get();
+            //$response['sales']=$results;
+
+            foreach ($results as $result){
+                if(isset($location_sales_items[$result->location_id]))
+                {
+                    if(isset($location_sales_items[$result->location_id][$result->variety_id]))
+                    {
+                        $location_sales_items[$result->location_id][$result->variety_id]['quantity_sales_cancel']=round($result->quantity,4);
+                        $location_sales_items[$result->location_id][$result->variety_id]['amount_sales_cancel']=round($result->amount,3);
+                    }
+                    else{
+                        $item=[];
+                        $item['quantity_sales_gross']=0;
+                        $item['amount_sales_gross']=0;
+                        $item['quantity_sales_cancel']=round($result->quantity,4);
+                        $item['amount_sales_cancel']=round($result->amount,3);
+                        $item['quantity_target']=0;
+                        $item['amount_target']=0;
+                        $location_sales_items[$result->location_id][$result->variety_id]=$item;
+                    }
+                }
+            }
+            //sales Cancel end
+
             //Target fiscal year start
             $query=DB::table(TABLE_DISTRIBUTORS_TARGETS.' as ds');
             $query->select('ds.*');
@@ -258,49 +340,70 @@ class IncentiveSummaryReportController extends RootController
                         $varieties=json_decode($result->varieties);
                         foreach ($varieties as $variety_id=>$quantity){
                             if(is_numeric($quantity)){
-                                if(in_array($variety_id,array_keys($incentive_varieties))){//should have incentive configured
+                                //if(in_array($variety_id,array_keys($incentive_varieties))){//should have incentive configured
                                     if(isset($location_sales_items[$result->location_id])){//must have sales
                                         if(isset($location_sales_items[$result->location_id][$variety_id])){//must have sales
                                             $location_sales_items[$result->location_id][$variety_id]['quantity_target']+=$quantity;
                                         }
+                                        else{
+                                            $location_sales_items[$result->location_id][$variety_id]['quantity_sales_gross']=0;
+                                            $location_sales_items[$result->location_id][$variety_id]['amount_sales_gross']=0;
+                                            $location_sales_items[$result->location_id][$variety_id]['quantity_sales_cancel']=0;
+                                            $location_sales_items[$result->location_id][$variety_id]['amount_sales_cancel']=0;
+                                            $location_sales_items[$result->location_id][$variety_id]['amount_target']=0;
+                                            $location_sales_items[$result->location_id][$variety_id]['quantity_target']=$quantity;
+                                        }
                                     }
-                                }
+                                //}
                             }
                         }
                     }
                 }
             }
             $location_incentive_items=[];
+
             foreach ($location_sales_items as $location_id=>$location_data){
                 if(!isset($location_incentive_items[$location_id])){
-                    $location_incentive_items[$location_id]=['amount_incentive'=>0];
+                    $location_incentive_items[$location_id]=['amount_target'=>0,'amount_sales_gross'=>0,'amount_sales_cancel'=>0,'amount_sales_net'=>0,'amount_incentive'=>0];
                 }
                 foreach ($location_data as $variety_id=>$result){
+                    $result['quantity_sales_net']=$result['quantity_sales_gross']-$result['quantity_sales_cancel'];
+                    $result['amount_sales_net']=$result['amount_sales_gross']-$result['amount_sales_cancel'];
+                    $unit_price=0;
+                    if(isset($varieties_unit_price_per_kg[$variety_id])){
+                        $unit_price=$varieties_unit_price_per_kg[$variety_id];
+                    }
+                    $unit_price_net=round($unit_price-($unit_price*$net_sale_adjustment/100),3);
+
+                    $location_incentive_items[$location_id]['amount_sales_gross']+=$result['amount_sales_gross'];
+                    $location_incentive_items[$location_id]['amount_sales_cancel']+=$result['amount_sales_cancel'];
+                    $location_incentive_items[$location_id]['amount_sales_net']+=$result['amount_sales_net'];
+                    $location_incentive_items[$location_id]['amount_target']+=($result['quantity_target']*$unit_price);
+
 
                     $achievement=0;
                     if($result['quantity_target']>0){
-                        $achievement=round($result['quantity_sales']*100/$result['quantity_target'],3);
+                        $achievement=round($result['quantity_sales_net']*100/$result['quantity_target'],3);
                     }
-                    else if($result['quantity_sales']>0){
+                    else if($result['quantity_sales_net']>0){
                         $achievement=100;
                     }
                     if($achievement>0){
-                        $unit_price=0;
-                        if(isset($varieties_unit_price_per_kg[$variety_id])){
-                            $unit_price=$varieties_unit_price_per_kg[$variety_id];
-                        }
-                        $unit_price_net=round($unit_price-($unit_price*$net_sale_adjustment/100),3);
                         $amount_incentive=0;
                         foreach ($incentive_slabs as $slab){
                             if($achievement>=$slab->name){
-                                $incentive_data=$incentive_varieties[$variety_id]->incentive;//must exits
-                                if($incentive_data->{$slab->id}){
-                                    $amount_incentive=round($result['quantity_sales']*$unit_price_net*$incentive_data->{$slab->id}*$manager_incentive/10000,3);
+                                if(isset($incentive_varieties[$variety_id]))
+                                {
+                                    $incentive_data=$incentive_varieties[$variety_id]->incentive;
+                                    if($incentive_data->{$slab->id}){
+                                        $amount_incentive=round($result['quantity_sales_net']*$unit_price_net*$incentive_data->{$slab->id}*$manager_incentive/10000,3);
+                                    }
                                 }
                                 break;
                             }
                         }
                         $location_incentive_items[$location_id]['amount_incentive']+=$amount_incentive;
+
                     }
                 }
             }
