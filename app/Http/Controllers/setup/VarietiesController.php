@@ -143,6 +143,7 @@ class VarietiesController extends RootController
         $validation_rule['name'] = ['required'];
         $validation_rule['crop_type_id'] = ['required','numeric'];
         $validation_rule['variety_sub_type_id'] = ['required','numeric'];
+        $validation_rule['characteristics'] = ['nullable'];
         $validation_rule['whose'] = [Rule::in(['ARM', 'Principal','Competitor'])];
         $validation_rule['principal_id']=['numeric','nullable'];
         $validation_rule['competitor_id']=['numeric','nullable'];
