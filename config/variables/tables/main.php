@@ -41,6 +41,7 @@ define('TABLE_TERRITORIES_PLAN_3YRS', $db_main.'.territories_plan_3yrs');
 
 define('TABLE_DEALERS_TARGETS', $db_main.'.dealers_targets');
 define('TABLE_DEALERS_SALES', $db_main.'.dealers_sales');
+define('TABLE_DEALERS_SALES_RETURN', $db_main.'.dealers_sales_return');
 define('TABLE_DEALERS_STOCK', $db_main.'.dealers_stock');
 
 define('TABLE_INCENTIVE_SLABS', $db_main.'.incentive_slabs');
