@@ -159,7 +159,8 @@ class DealersSalesController extends RootController
                 $query = DB::table(TABLE_DEALERS_SALES . ' as ds');
                 $query->select('ds.*');
                 $query->where('dealer_id', '=', $itemNew['dealer_id']);
-                $query->whereDate('sales_at', Carbon::today()->toDateString());
+                //$query->whereDate('sales_at', Carbon::today()->toDateString());
+                $query->whereDate('sales_at', Carbon::parse($itemNew['sales_at'])->toDateString());
                 $query->where('status', '=', SYSTEM_STATUS_ACTIVE);
 
                 $result = $query->first();
@@ -181,6 +182,7 @@ class DealersSalesController extends RootController
         $this->checkSaveToken();
         //Input validation start
         $validation_rule = [];
+        $validation_rule['sales_at'] = ['required'];
         $validation_rule['dealer_id'] = ['required','numeric'];
         $validation_rule['varieties'] = ['required'];
 
@@ -202,7 +204,8 @@ class DealersSalesController extends RootController
         $query=DB::table(TABLE_DEALERS_SALES.' as ds');
         $query->select('ds.*');
         $query->where('dealer_id','=',$itemNew['dealer_id']);
-        $query->whereDate('sales_at', Carbon::today()->toDateString());
+        //$query->whereDate('sales_at', Carbon::today()->toDateString());
+        $query->whereDate('sales_at', Carbon::parse($itemNew['sales_at'])->toDateString());
         $query->where('status', '=', SYSTEM_STATUS_ACTIVE);
         $result = $query->first();
         if($result){
