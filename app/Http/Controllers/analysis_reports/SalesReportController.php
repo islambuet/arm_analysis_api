@@ -95,7 +95,12 @@ class SalesReportController extends RootController
             $response = [];
             $response['error'] ='';
             $options = $request->input('options');
-
+            $months[]=0;
+            if($options['month']>0){
+                for($i=0;$i<$options['num_months'];$i++){
+                    $months[]=((($options['month']+$i)>12)?($options['month']+$i-12):($options['month']+$i));
+                }
+            }
             //sales start
             $query=DB::table(TABLE_DISTRIBUTORS_SALES.' as sd');
             $query->select('sd.*');
@@ -150,9 +155,8 @@ class SalesReportController extends RootController
                 $query->whereDate('sd.sales_at','<=',$options['sales_to']);
             }
             if($options['month']>0){
-                $query->whereMonth('sd.sales_at','=',$options['month']);
+                $query->whereIn(DB::raw('month(sd.sales_at)'),$months);
             }
-
             $results=$query->get();
             $response['sales_gross']=$results;
             //sales end
@@ -212,7 +216,7 @@ class SalesReportController extends RootController
                 $query->whereDate('sd.sales_at','<=',$options['sales_to']);
             }
             if($options['month']>0){
-                $query->whereMonth('sd.sales_at','=',$options['month']);
+                $query->whereIn(DB::raw('month(sd.sales_at)'),$months);
             }
 
             $results=$query->get();
