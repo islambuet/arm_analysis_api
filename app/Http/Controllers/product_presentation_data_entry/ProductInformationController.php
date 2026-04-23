@@ -162,25 +162,34 @@ class ProductInformationController extends RootController
                 return response()->json(['error' => 'ACCESS_DENIED', 'messages' => __('You do not have add access')]);
             }
         }
+        //return response()->json(['error' => 'ACCESS_DENIED', 'messages' =>$request->input()]);
         //permission checking passed
         $this->checkSaveToken();
         //Input validation start
         $validation_rule = [];
-        $validation_rule['name'] = ['required'];
-        $validation_rule['code'] = ['nullable'];
-        $validation_rule['replica'] = [Rule::in([SYSTEM_STATUS_YES, SYSTEM_STATUS_NO])];
-        $validation_rule['initial_plants']=['numeric'];
-        $validation_rule['ordering']=['numeric'];
-        $validation_rule['status'] = [Rule::in([SYSTEM_STATUS_ACTIVE, SYSTEM_STATUS_INACTIVE])];
+        $validation_rule['upazila_id'] = ['required'];
+        $validation_rule['variety_id_arm'] = ['required'];
+        $validation_rule['variety_id_competitor'] = ['required'];
+        $validation_rule['farmer_name'] = ['nullable'];
+        $validation_rule['mobile_no'] = ['nullable'];
+        $validation_rule['sowing_date_arm'] = ['nullable'];
+        $validation_rule['sowing_date_competitor'] = ['nullable'];
+        $validation_rule['pictures'] = ['nullable'];
 
         $itemNew = $request->input('item');
         $itemOld = [];
 
         $this->validateInputKeys($itemNew, array_keys($validation_rule));
+        if(isset($itemNew['pictures'])){
+            $itemNew['pictures']=json_encode($itemNew['pictures']);
+        }
+        else{
+            $itemNew['pictures']=null;
+        }
 
         //edit change checking
         if ($itemId > 0) {
-            $result = DB::table(TABLE_CROPS)->select(array_keys($validation_rule))->find($itemId);
+            $result = DB::table(TABLE_PRODUCTS_INFORMATION)->select(array_keys($validation_rule))->find($itemId);
             if (!$result) {
                 return response()->json(['error' => 'ITEM_NOT_FOUND', 'messages' => __('Invalid Id ' . $itemId)]);
             }
@@ -207,23 +216,23 @@ class ProductInformationController extends RootController
         $this->validateInputValues($itemNew, $validation_rule);
         //Input validation ends
         DB::beginTransaction();
-        try {
+        //try {
             $time = Carbon::now();
             $dataHistory = [];
-            $dataHistory['table_name'] = TABLE_CROPS;
+            $dataHistory['table_name'] = TABLE_PRODUCTS_INFORMATION;
             $dataHistory['controller'] = (new \ReflectionClass(__CLASS__))->getShortName();
             $dataHistory['method'] = __FUNCTION__;
             $newId = $itemId;
             if ($itemId > 0) {
                 $itemNew['updated_by'] = $this->user->id;
                 $itemNew['updated_at'] = $time;
-                DB::table(TABLE_CROPS)->where('id', $itemId)->update($itemNew);
+                DB::table(TABLE_PRODUCTS_INFORMATION)->where('id', $itemId)->update($itemNew);
                 $dataHistory['table_id'] = $itemId;
                 $dataHistory['action'] = DB_ACTION_EDIT;
             } else {
                 $itemNew['created_by'] = $this->user->id;
                 $itemNew['created_at'] = $time;
-                $newId = DB::table(TABLE_CROPS)->insertGetId($itemNew);
+                $newId = DB::table(TABLE_PRODUCTS_INFORMATION)->insertGetId($itemNew);
                 $dataHistory['table_id'] = $newId;
                 $dataHistory['action'] = DB_ACTION_ADD;
             }
@@ -239,10 +248,10 @@ class ProductInformationController extends RootController
             DB::commit();
 
             return response()->json(['error' => '', 'messages' => 'Data (' . $newId . ')' . ($itemId > 0 ? 'Updated' : 'Created') . ')  Successfully']);
-        } catch (\Exception $ex) {
-            DB::rollback();
-            return response()->json(['error' => 'DB_SAVE_FAILED', 'messages' => __('Failed to save.')]);
-        }
+//        } catch (\Exception $ex) {
+//            DB::rollback();
+//            return response()->json(['error' => 'DB_SAVE_FAILED', 'messages' => __('Failed to save.')]);
+//        }
     }
 }
 

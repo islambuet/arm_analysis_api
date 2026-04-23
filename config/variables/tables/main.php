@@ -50,3 +50,4 @@ define('TABLE_INCENTIVE_VARIETIES', $db_main.'.incentive_varieties');
 
 define('TABLE_TYPE_MONTHS_COLOR', $db_main.'.type_months_color');
 define('TABLE_TYPE_MONTHS', $db_main.'.type_months');
+define('TABLE_PRODUCTS_INFORMATION', $db_main.'.products_information');
