@@ -117,11 +117,45 @@ class ProductInformationController extends RootController
             $response['error'] = '';
             $perPage=$request->input('perPage',2);
             $options = $request->input('options');
-            $response['options'] = $options;
+            $query=DB::table(TABLE_PRODUCTS_INFORMATION.' as pi');
+            $query->select('pi.id','pi.upazila_id','pi.variety_id_arm','pi.variety_id_competitor','pi.farmer_name','pi.mobile_no');
+            $query->where('pi.status', '!=', SYSTEM_STATUS_DELETE);
+            $query->join(TABLE_LOCATION_UPAZILAS.' as upazilas', 'upazilas.id', '=', 'pi.upazila_id');
+            $query->addSelect('upazilas.name as upazila_name');
+            $query->join(TABLE_LOCATION_DISTRICTS.' as districts', 'districts.id', '=', 'upazilas.district_id');
+            $query->addSelect('districts.name as district_name');
+            $query->join(TABLE_LOCATION_TERRITORIES.' as territories', 'territories.id', '=', 'upazilas.territory_id');
+            $query->addSelect('territories.name as territory_name');
+            $query->join(TABLE_LOCATION_AREAS.' as areas', 'areas.id', '=', 'territories.area_id');
+            $query->addSelect('areas.name as area_name');
+            $query->join(TABLE_LOCATION_PARTS.' as parts', 'parts.id', '=', 'areas.part_id');
+            $query->addSelect('parts.name as part_name');
 
-            $query=DB::table(TABLE_CROPS);
-            $query->orderBy('id', 'DESC');
-            $query->where('status', '!=', SYSTEM_STATUS_DELETE);//
+            $query->join(TABLE_VARIETIES.' as varieties', 'varieties.id', '=', 'pi.variety_id_arm');
+            $query->addSelect('varieties.name as variety_name_arm');
+            $query->join(TABLE_CROP_TYPES.' as crop_types', 'crop_types.id', '=', 'varieties.crop_type_id');
+            $query->addSelect('crop_types.name as crop_type_name');
+            $query->join(TABLE_CROPS.' as crops', 'crops.id', '=', 'crop_types.crop_id');
+            $query->addSelect('crops.name as crop_name');
+            $query->join(TABLE_VARIETIES.' as varieties2', 'varieties2.id', '=', 'pi.variety_id_competitor');
+            $query->addSelect('varieties2.name as variety_name_competitor');
+            $query->join(TABLE_COMPETITORS.' as competitors', 'competitors.id', '=', 'varieties2.competitor_id');
+            $query->addSelect('competitors.name as competitor_name');
+            $query->orderBy('pi.id', 'DESC');
+
+            if($options['part_id']>0){
+                $query->where('parts.id','=',$options['part_id']);
+                if($options['area_id']>0){
+                    $query->where('areas.id','=',$options['area_id']);
+                    if($options['territory_id']>0){
+                        $query->where('territories.id','=',$options['territory_id']);
+                        if($options['upazila_id']>0){
+                            $query->where('upazilas.id','=',$options['upazila_id']);
+                        }
+                    }
+                }
+            }
+
             if ($perPage == -1) {
                 $perPage = $query->count();
                 if($perPage<1){
