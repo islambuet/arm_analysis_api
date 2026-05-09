@@ -173,9 +173,45 @@ class ProductInformationController extends RootController
     public function getItem(Request $request, $itemId): JsonResponse
     {
         if ($this->permissions->action_0 == 1) {
-            $result = DB::table(TABLE_CROPS)->find($itemId);
+            $query=DB::table(TABLE_PRODUCTS_INFORMATION.' as pi');
+            $query->select('pi.*');
+            $query->join(TABLE_LOCATION_UPAZILAS.' as upazilas', 'upazilas.id', '=', 'pi.upazila_id');
+            $query->addSelect('upazilas.name as upazila_name');
+            $query->join(TABLE_LOCATION_DISTRICTS.' as districts', 'districts.id', '=', 'upazilas.district_id');
+            $query->addSelect('districts.name as district_name');
+            $query->join(TABLE_LOCATION_TERRITORIES.' as territories', 'territories.id', '=', 'upazilas.territory_id');
+            $query->addSelect('territories.name as territory_name','territories.id as territory_id');
+            $query->join(TABLE_LOCATION_AREAS.' as areas', 'areas.id', '=', 'territories.area_id');
+            $query->addSelect('areas.name as area_name','areas.id as area_id');
+            $query->join(TABLE_LOCATION_PARTS.' as parts', 'parts.id', '=', 'areas.part_id');
+            $query->addSelect('parts.name as part_name','parts.id as part_id');
+
+            $query->join(TABLE_VARIETIES.' as varieties', 'varieties.id', '=', 'pi.variety_id_arm');
+            $query->addSelect('varieties.name as variety_name_arm');
+            $query->join(TABLE_CROP_TYPES.' as crop_types', 'crop_types.id', '=', 'varieties.crop_type_id');
+            $query->addSelect('crop_types.name as crop_type_name','crop_types.id as crop_type_id');
+            $query->join(TABLE_CROPS.' as crops', 'crops.id', '=', 'crop_types.crop_id');
+            $query->addSelect('crops.name as crop_name','crops.id as crop_id');
+            $query->join(TABLE_VARIETIES.' as varieties2', 'varieties2.id', '=', 'pi.variety_id_competitor');
+            $query->addSelect('varieties2.name as variety_name_competitor');
+            $query->join(TABLE_COMPETITORS.' as competitors', 'competitors.id', '=', 'varieties2.competitor_id');
+            $query->addSelect('competitors.name as competitor_name');
+            $query->where('pi.id','=',$itemId);
+            if($this->user->part_id>0){
+                $query->where('parts.id','=',$this->user->part_id);
+                if($this->user->area_id>0){
+                    $query->where('areas.id','=',$this->user->area_id);
+                    if($this->user->territory_id>0){
+                        $query->where('territories.id','=',$this->user->territory_id);
+                    }
+                }
+            }
+            $result = $query->first();
             if (!$result) {
                 return response()->json(['error' => 'ITEM_NOT_FOUND', 'messages' => __('Invalid Id ' . $itemId)]);
+            }
+            if ($result->files) {
+                $result->files = json_decode($result->files);
             }
             return response()->json(['error'=>'','item'=>$result]);
         } else {
@@ -201,24 +237,24 @@ class ProductInformationController extends RootController
         $this->checkSaveToken();
         //Input validation start
         $validation_rule = [];
-        $validation_rule['upazila_id'] = ['required'];
-        $validation_rule['variety_id_arm'] = ['required'];
-        $validation_rule['variety_id_competitor'] = ['required'];
+        $validation_rule['upazila_id'] = ['required','numeric','gt:0'];
+        $validation_rule['variety_id_arm'] = ['required','numeric','gt:0'];
+        $validation_rule['variety_id_competitor'] = ['required','numeric','gt:0'];
         $validation_rule['farmer_name'] = ['nullable'];
         $validation_rule['mobile_no'] = ['nullable'];
         $validation_rule['sowing_date_arm'] = ['nullable'];
         $validation_rule['sowing_date_competitor'] = ['nullable'];
-        $validation_rule['pictures'] = ['nullable'];
+        $validation_rule['files'] = ['nullable'];
 
         $itemNew = $request->input('item');
         $itemOld = [];
 
         $this->validateInputKeys($itemNew, array_keys($validation_rule));
-        if(isset($itemNew['pictures'])){
-            $itemNew['pictures']=json_encode($itemNew['pictures']);
+        if(isset($itemNew['files'])){
+            $itemNew['files']=json_encode($itemNew['files']);
         }
         else{
-            $itemNew['pictures']=null;
+            $itemNew['files']=null;
         }
 
         //edit change checking
