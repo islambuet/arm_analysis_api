@@ -244,6 +244,8 @@ class ProductInformationController extends RootController
         $validation_rule['mobile_no'] = ['nullable'];
         $validation_rule['sowing_date_arm'] = ['nullable'];
         $validation_rule['sowing_date_competitor'] = ['nullable'];
+        $validation_rule['characteristics_arm'] = ['nullable'];
+        $validation_rule['characteristics_competitor'] = ['nullable'];
         $validation_rule['files'] = ['nullable'];
 
         $itemNew = $request->input('item');
