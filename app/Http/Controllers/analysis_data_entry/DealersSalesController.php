@@ -329,5 +329,57 @@ class DealersSalesController extends RootController
             return response()->json(['error' => 'DB_SAVE_FAILED', 'messages' => __('Failed to save.')]);
         }
     }
+    public function deleteItem(Request $request, $itemId): JsonResponse
+    {
+        if ($this->permissions->action_3 == 1) {
+            $response = [];
+            $response['error'] = '';
+            $result = DB::table(TABLE_DEALERS_SALES)->where('status', '=', SYSTEM_STATUS_ACTIVE)->find($itemId);
+            if (!$result) {
+                return response()->json(['error' => 'ITEM_NOT_FOUND', 'messages' => __('Invalid Id ' . $itemId)]);
+            }
+            $itemOld['updated_by'] = $result->updated_by;
+            $itemOld['updated_at'] = $result->updated_at;
+            $itemOld['status'] = $result->status;
+            $itemNew['status']=SYSTEM_STATUS_DELETE;
+
+            DB::beginTransaction();
+            try {
+                $time = Carbon::now();
+                $dataHistory = [];
+                $dataHistory['table_name'] = TABLE_DEALERS_SALES;
+                $dataHistory['controller'] = (new \ReflectionClass(__CLASS__))->getShortName();
+                $dataHistory['method'] = __FUNCTION__;
+
+
+                $itemNew['updated_by'] = $this->user->id;
+                $itemNew['updated_at'] = $time;
+                DB::table(TABLE_DEALERS_SALES)->where('id', $itemId)->update($itemNew);
+                $dataHistory['table_id'] = $itemId;
+                $dataHistory['action'] = DB_ACTION_DELETE;
+
+                unset($itemNew['updated_by'],$itemNew['created_by'],$itemNew['created_at'],$itemNew['updated_at']);
+
+                $dataHistory['data_old'] = json_encode($itemOld);
+                $dataHistory['data_new'] = json_encode($itemNew);
+                $dataHistory['created_at'] = $time;
+                $dataHistory['created_by'] = $this->user->id;
+
+                $this->dBSaveHistory($dataHistory, TABLE_SYSTEM_HISTORIES);
+
+                DB::commit();
+                return response()->json($response);
+            }
+            catch (\Exception $ex) {
+                DB::rollback();
+                return response()->json(['error' => 'DB_SAVE_FAILED', 'messages' => __('Failed to save.')]);
+            }
+
+
+
+        } else {
+            return response()->json(['error' => 'ACCESS_DENIED', 'messages' => __('You do not have access on this page')]);
+        }
+    }
 }
 
