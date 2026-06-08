@@ -13,9 +13,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 
-class DealersSalesEntryController extends RootController
+class DealersSalesEntryDetailsController extends RootController
 {
-    public $api_url = 'analysis_reports/dealers_sales_entry';
+    public $api_url = 'analysis_reports/dealers_sales_entry_details';
     public $permissions;
 
     public function __construct()
@@ -52,6 +52,17 @@ class DealersSalesEntryController extends RootController
             $response['dealers'] = DB::table(TABLE_DEALERS)
                 ->select('id', 'name','distributor_id', 'status')
                 ->orderBy('name', 'ASC')
+                ->get();
+            $response['varieties'] = DB::table(TABLE_VARIETIES.' as varieties')
+                ->select('varieties.*')
+                ->join(TABLE_CROP_TYPES.' as crop_types', 'crop_types.id', '=', 'varieties.crop_type_id')
+                ->join(TABLE_CROPS.' as crops', 'crops.id', '=', 'crop_types.crop_id')
+                ->addSelect('crops.name as crop_name')
+                ->addSelect('crop_types.name as type_name')
+                ->where('whose', 'ARM')
+                ->orderBy('crops.ordering', 'ASC')
+                ->orderBy('crop_types.ordering', 'ASC')
+                ->orderBy('varieties.ordering', 'ASC')
                 ->get();
             $response['user_locations']=['part_id'=>$this->user->part_id,'area_id'=>$this->user->area_id,'territory_id'=>$this->user->territory_id];
             return response()->json($response);
