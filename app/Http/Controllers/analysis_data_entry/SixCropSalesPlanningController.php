@@ -13,9 +13,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 
-class SixCropSalesPlanningAMSController extends RootController
+class SixCropSalesPlanningController extends RootController
 {
-    public $api_url = 'analysis_data_entry/six_crop_sales_planning_ams';
+    public $api_url = 'analysis_data_entry/six_crop_sales_planning';
     public $permissions;
 
     public function __construct()
@@ -66,6 +66,8 @@ class SixCropSalesPlanningAMSController extends RootController
 
             $results=DB::table(TABLE_VARIETIES.' as varieties')
                 ->select('varieties.*')
+                ->join(TABLE_VARIETY_SUB_TYPES.' as vst', 'vst.id', '=', 'varieties.variety_sub_type_id')
+                ->addSelect('vst.name as variety_sub_type_name')
                 ->join(TABLE_COMPETITORS.' as competitors', 'competitors.id', '=', 'varieties.competitor_id')
                 ->addSelect('competitors.name as competitor_name')
                 ->where('varieties.whose','=','Competitor')
@@ -82,6 +84,8 @@ class SixCropSalesPlanningAMSController extends RootController
 
             $results=DB::table(TABLE_VARIETIES.' as varieties')
                 ->select('varieties.*')
+                ->join(TABLE_VARIETY_SUB_TYPES.' as vst', 'vst.id', '=', 'varieties.variety_sub_type_id')
+                ->addSelect('vst.name as variety_sub_type_name')
                 ->where('varieties.whose','=','ARM')
                 ->where('varieties.status', SYSTEM_STATUS_ACTIVE)
                 ->orderBy('varieties.name', 'ASC')
@@ -329,6 +333,10 @@ class SixCropSalesPlanningAMSController extends RootController
             $row['competitor_varieties']=null;
             if(isset($info['competitor_varieties'])){
                 $row['competitor_varieties']=json_encode($info['competitor_varieties']);
+            }
+            $row['arm_varieties']=null;
+            if(isset($info['arm_varieties'])){
+                $row['arm_varieties']=json_encode($info['arm_varieties']);
             }
             //final list for add edit
             if(isset($data_previous[$type_id])){

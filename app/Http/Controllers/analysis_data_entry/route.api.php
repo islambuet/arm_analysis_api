@@ -121,8 +121,8 @@ Route::middleware('logged-user')->group(function()use ($url,$controllerClass){
     Route::post($url.'/save-items', [$controllerClass, 'saveItems']);
 });
 
-$url='analysis_data_entry/six_crop_sales_planning_ams';
-$controllerClass= Controllers\analysis_data_entry\SixCropSalesPlanningAMSController::class;
+$url='analysis_data_entry/six_crop_sales_planning';
+$controllerClass= Controllers\analysis_data_entry\SixCropSalesPlanningController::class;
 /** @noinspection DuplicatedCode */
 Route::middleware('logged-user')->group(function()use ($url,$controllerClass){
     Route::match(['GET','POST'],$url.'/initialize', [$controllerClass, 'initialize']);
@@ -131,15 +131,6 @@ Route::middleware('logged-user')->group(function()use ($url,$controllerClass){
     Route::post($url.'/save-item', [$controllerClass, 'saveItem']);
 });
 
-$url='analysis_data_entry/six_crop_sales_planning_sm';
-$controllerClass= Controllers\analysis_data_entry\SixCropSalesPlanningSMController::class;
-/** @noinspection DuplicatedCode */
-Route::middleware('logged-user')->group(function()use ($url,$controllerClass){
-    Route::match(['GET','POST'],$url.'/initialize', [$controllerClass, 'initialize']);
-    Route::match(['GET','POST'],$url.'/get-items/{itemId}', [$controllerClass, 'getItems']);
-    Route::match(['GET','POST'],$url.'/get-item/{itemId}', [$controllerClass, 'getItem']);
-    Route::post($url.'/save-item', [$controllerClass, 'saveItem']);
-});
 
 $url='analysis_data_entry/territories_plan_3yrs';
 $controllerClass= Controllers\analysis_data_entry\TerritoriesPlan3yrsController::class;
