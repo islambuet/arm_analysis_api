@@ -126,7 +126,8 @@ class DealersSalesController extends RootController
                 }
             }
             $results = $query->paginate($perPage)->toArray();
-            return response()->json(['error'=>'','items'=>$results]);
+            $response['items'] = $results;
+            return response()->json($response);
         } else {
             return response()->json(['error' => 'ACCESS_DENIED', 'messages' => __('You do not have access on this page')]);
         }
