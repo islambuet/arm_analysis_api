@@ -82,7 +82,11 @@ class DealersSalesController extends RootController
     public function getItems(Request $request): JsonResponse
     {
         if ($this->permissions->action_0 == 1) {
-            $perPage = $request->input('perPage', 50);
+            $response=[];
+            $response['error'] = '';
+            $perPage=$request->input('perPage',50);
+            $options = $request->input('options');
+
             //$query=DB::table(TABLE_CROP_TYPES);
             $query=DB::table(TABLE_DEALERS_SALES.' as ds');
             $query->select('ds.*');
@@ -105,6 +109,12 @@ class DealersSalesController extends RootController
                         $query->where('territories.id', $this->user->territory_id);
                     }
                 }
+            }
+            if($options['sales_from']){
+                $query->whereDate('ds.sales_at','>=',$options['sales_from']);
+            }
+            if($options['sales_to']){
+                $query->whereDate('ds.sales_at','<=',$options['sales_to']);
             }
 
             $query->orderBy('ds.id', 'DESC');
