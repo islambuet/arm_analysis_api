@@ -51,3 +51,7 @@ define('TABLE_INCENTIVE_VARIETIES', $db_main.'.incentive_varieties');
 define('TABLE_TYPE_MONTHS_COLOR', $db_main.'.type_months_color');
 define('TABLE_TYPE_MONTHS', $db_main.'.type_months');
 define('TABLE_PRODUCTS_INFORMATION', $db_main.'.products_information');
+
+define('TABLE_DEALER_PRODUCT_BONUS_SETUP', $db_main.'.dealer_product_bonus_setup');
+define('TABLE_DEALER_PRODUCT_BONUS_GENERATE_DATE', $db_main.'.dealer_product_bonus_generate_date');
+define('TABLE_DEALER_PRODUCT_BONUS_GENERATE_BONUS', $db_main.'.dealer_product_bonus_generate_bonus');
