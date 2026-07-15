@@ -190,8 +190,8 @@ class GenerateEligibleListController extends RootController
         $query->join(TABLE_DEALERS.' as dealers', 'dealers.id', '=', 'ds.dealer_id');
 
         //if($itemNew['generated_at']<=$lastGeneratedDate->generated_at){
-        $query->where('ds.sales_at','>',$lastGeneratedDate->generated_at);
-        $query->where('ds.sales_at','<',$itemNew['generated_at']);
+        $query->whereDate('ds.sales_at','>',$lastGeneratedDate->generated_at);
+        $query->whereDate('ds.sales_at','<=',$itemNew['generated_at']);
         $query->where('ds.status', '=', SYSTEM_STATUS_ACTIVE);
         $results=$query->get();
         foreach ($results as $result){
