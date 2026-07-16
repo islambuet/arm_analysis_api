@@ -70,11 +70,6 @@ class EligibleListController extends RootController
                 ->select('id', 'crop_id', 'crop_type_ids', 'quantity')
                 ->orderBy('ordering', 'ASC')
                 ->get();
-            $response['crops'] = DB::table(TABLE_CROPS)
-                ->select('id', 'name', 'status')
-                ->orderBy('ordering', 'ASC')
-                ->orderBy('id', 'ASC')
-                ->get();
             $response['user_locations']=['part_id'=>$this->user->part_id,'area_id'=>$this->user->area_id,'territory_id'=>$this->user->territory_id];
             return response()->json($response);
 
