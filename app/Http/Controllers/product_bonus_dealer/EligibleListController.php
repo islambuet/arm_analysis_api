@@ -128,5 +128,180 @@ class EligibleListController extends RootController
             return response()->json(['error' => 'ACCESS_DENIED', 'messages' => __('You do not have access on this page')]);
         }
     }
+    public function getItem(Request $request, $combineIds): JsonResponse
+    {
+        if ($this->permissions->action_0 == 1) {
+            $response= [];
+            $response['error'] = '';
+            $temp= explode('_', $combineIds);
+            $itemId=0;
+            $bonus_id=0;
+            if(isset($temp[0])){
+                $itemId=$temp[0];
+            }
+            if(isset($temp[1])){
+                $bonus_id=$temp[1];
+            }
+            $result = DB::table(TABLE_DEALER_PRODUCT_BONUS_GENERATE_BONUS)->find($itemId);
+            if (!$result) {
+                return response()->json(['error' => 'ITEM_NOT_FOUND', 'messages' => __('Invalid Id ' . $itemId)]);
+            }
+            $bonus_array=json_decode($result->bonus_data,true);
+            if(isset($bonus_array[$bonus_id]))
+            {
+                $result->bonus_data=$bonus_array[$bonus_id];
+            }
+            else{
+                $result->bonus_data=(object)[];
+            }
+            $delivery_array=json_decode($result->delivery_data,true);
+            if(isset($delivery_array[$bonus_id]))
+            {
+                $result->delivery_data=$delivery_array[$bonus_id];
+            }
+            else{
+                $result->delivery_data=(object)[];
+            }
+            $response['item']=$result;
+            return response()->json($response);
+
+        } else {
+            return response()->json(['error' => 'ACCESS_DENIED', 'messages' => $this->permissions]);
+        }
+    }
+    public function saveItem(Request $request): JsonResponse
+    {
+        $combineIds = $request->input('id', 0);
+        $combineIds = $request->input('id', 0);
+        $temp= explode('_', $combineIds);
+        $itemId=0;
+        $bonus_id=0;
+        if(isset($temp[0])){
+            $itemId=$temp[0];
+        }
+        if(isset($temp[1])){
+            $bonus_id=$temp[1];
+        }
+        $result = DB::table(TABLE_DEALER_PRODUCT_BONUS_GENERATE_BONUS)->find($itemId);
+        if (!$result) {
+            return response()->json(['error' => 'ITEM_NOT_FOUND', 'messages' => __('Invalid Id ' . $itemId)]);
+        }
+        $bonus_array=json_decode($result->bonus_data,true);
+        $delivery_array=json_decode($result->delivery_data,true);
+        //permission checking passed
+        $this->checkSaveToken();
+        //Input validation start
+        $validation_rule = [];
+        $validation_rule['quantity'] = ['required'];
+        $validation_rule['remarks'] = ['nullable'];
+
+        $itemNew = $request->input('item');
+
+
+        $this->validateInputKeys($itemNew, array_keys($validation_rule));
+        $this->validateInputValues($itemNew, $validation_rule);
+        $time = Carbon::now();
+        if(isset($bonus_array[$bonus_id]))
+        {
+            $bonus_array[$bonus_id]['quantity_delivered']+=$itemNew['quantity'];
+            $bonus_array[$bonus_id]['quantity_num_delivered']+=1;
+            $bonus_array[$bonus_id]['quantity_balance_new']-=$itemNew['quantity'];
+
+            $delivery_array[$bonus_id][]=[
+                'quantity'=>$itemNew['quantity'],
+                'remarks'=>$itemNew['remarks'],
+                'created_by' => $this->user->id,
+                'created_at' => $time
+            ];
+            //Input validation ends
+            DB::beginTransaction();
+            try {
+                DB::table(TABLE_DEALER_PRODUCT_BONUS_GENERATE_BONUS)->where('id', $itemId)->update(
+                    [
+                        'delivery_data'=>json_encode($delivery_array),
+                        'bonus_data'=>json_encode($bonus_array)
+                    ]
+                );
+                $this->updateSaveToken();
+                DB::commit();
+
+                return response()->json(['error' => '', 'messages' => 'Data Updated Successfully']);
+            } catch (\Exception $ex) {
+                DB::rollback();
+                return response()->json(['error' => 'DB_SAVE_FAILED', 'messages' => __('Failed to save.')]);
+            }
+        }
+        else{
+            return response()->json(['error' => 'VALIDATION_FAILED', 'messages' => 'Bonus Id not found']);
+        }
+    }
+    public function deleteItem(Request $request, $combineIds): JsonResponse
+    {
+        $temp= explode('_', $combineIds);
+        $itemId=0;
+        $bonus_id=0;
+        $delete_index=-1;
+        if(isset($temp[0])){
+            $itemId=$temp[0];
+        }
+        if(isset($temp[1])){
+            $bonus_id=$temp[1];
+        }
+        if(isset($temp[2])){
+            $delete_index=$temp[2];
+        }
+
+        $result = DB::table(TABLE_DEALER_PRODUCT_BONUS_GENERATE_BONUS)->find($itemId);
+        if (!$result) {
+            return response()->json(['error' => 'ITEM_NOT_FOUND', 'messages' => __('Invalid Id ' . $itemId)]);
+        }
+        $bonus_array=json_decode($result->bonus_data,true);
+        $delivery_array=json_decode($result->delivery_data,true);
+
+        if(isset($delivery_array[$bonus_id]))
+        {
+            if(isset($delivery_array[$bonus_id][$delete_index]))
+            {
+                $delivery_datum=$delivery_array[$bonus_id][$delete_index];
+                if(isset($bonus_array[$bonus_id]))
+                {
+                    $bonus_array[$bonus_id]['quantity_delivered']-=$delivery_datum['quantity'];
+                    $bonus_array[$bonus_id]['quantity_num_delivered']-=1;
+                    $bonus_array[$bonus_id]['quantity_balance_new']+=$delivery_datum['quantity'];
+
+                    unset($delivery_array[$bonus_id][$delete_index]);
+                    //Input validation ends
+                    DB::beginTransaction();
+                    try {
+                        DB::table(TABLE_DEALER_PRODUCT_BONUS_GENERATE_BONUS)->where('id', $itemId)->update(
+                            [
+                                'delivery_data'=>json_encode($delivery_array),
+                                'bonus_data'=>json_encode($bonus_array)
+                            ]
+                        );
+                        $this->updateSaveToken();
+                        DB::commit();
+
+                        return response()->json(['error' => '', 'messages' => 'Data Updated Successfully']);
+                    } catch (\Exception $ex) {
+                        DB::rollback();
+                        return response()->json(['error' => 'DB_SAVE_FAILED', 'messages' => __('Failed to save.')]);
+                    }
+                }
+                else{
+                    return response()->json(['error' => 'VALIDATION_FAILED', 'messages' => 'Bonus Id not found']);
+                }
+
+            }
+            else{
+                return response()->json(['error' => 'VALIDATION_FAILED', 'messages' => 'Delivery not found']);
+            }
+
+        }
+        else{
+            return response()->json(['error' => 'VALIDATION_FAILED', 'messages' => 'Delivery Data empty not found']);
+        }
+
+    }
 }
 
