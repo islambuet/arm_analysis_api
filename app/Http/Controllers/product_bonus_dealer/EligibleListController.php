@@ -42,11 +42,13 @@ class EligibleListController extends RootController
                 ->select('id', 'name','area_id', 'status')
                 ->orderBy('name', 'ASC')
                 ->get();
-            $response['dealers'] = DB::table(TABLE_DEALERS.' as ds')
-                ->select('ds.id', 'ds.name','ds.distributor_id', 'ds.status')
-                ->join(TABLE_DISTRIBUTORS.' as d', 'd.id', '=', 'ds.distributor_id')
-                ->addSelect('d.name as distributor_name','d.id as distributor_id','d.territory_id')
-                ->orderBy('ds.name', 'ASC')
+            $response['distributors'] = DB::table(TABLE_DISTRIBUTORS)
+                ->select('id', 'name','territory_id', 'status')
+                ->orderBy('name', 'ASC')
+                ->get();
+            $response['dealers'] = DB::table(TABLE_DEALERS)
+                ->select('id', 'name','distributor_id', 'status')
+                ->orderBy('name', 'ASC')
                 ->get();
 
             $response['crops'] = DB::table(TABLE_CROPS)
@@ -113,8 +115,11 @@ class EligibleListController extends RootController
                     $query->where('areas.id','=',$options['area_id']);
                     if($options['territory_id']>0){
                         $query->where('territories.id','=',$options['territory_id']);
-                        if($options['dealer_id']>0){
-                            $query->where('dealers.id','=',$options['dealer_id']);
+                        if($options['distributor_id']>0){
+                            $query->where('d.id','=',$options['distributor_id']);
+                            if($options['dealer_id']>0){
+                                $query->where('dealers.id','=',$options['dealer_id']);
+                            }
                         }
                     }
                 }

@@ -42,11 +42,13 @@ class GenerateEligibleListController extends RootController
                 ->select('id', 'name','area_id', 'status')
                 ->orderBy('name', 'ASC')
                 ->get();
-            $response['dealers'] = DB::table(TABLE_DEALERS.' as ds')
-                ->select('ds.id', 'ds.name','ds.distributor_id', 'ds.status')
-                ->join(TABLE_DISTRIBUTORS.' as d', 'd.id', '=', 'ds.distributor_id')
-                ->addSelect('d.name as distributor_name','d.id as distributor_id','d.territory_id')
-                ->orderBy('ds.name', 'ASC')
+            $response['distributors'] = DB::table(TABLE_DISTRIBUTORS)
+                ->select('id', 'name','territory_id', 'status')
+                ->orderBy('name', 'ASC')
+                ->get();
+            $response['dealers'] = DB::table(TABLE_DEALERS)
+                ->select('id', 'name','distributor_id', 'status')
+                ->orderBy('name', 'ASC')
                 ->get();
 
             $response['crops'] = DB::table(TABLE_CROPS)
