@@ -12,9 +12,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 
-class CompetitorsController extends RootController
+class CouriersController extends RootController
 {
-    public $api_url = 'setup/competitors';
+    public $api_url = 'setup/couriers';
     public $permissions;
 
     public function __construct()
@@ -36,7 +36,7 @@ class CompetitorsController extends RootController
     {
         if ($this->permissions->action_0 == 1) {
             $perPage = $request->input('perPage', 50);
-            $query=DB::table(TABLE_COMPETITORS);
+            $query=DB::table(TABLE_COURIERS);
             $query->orderBy('id', 'DESC');
             $query->where('status', '!=', SYSTEM_STATUS_DELETE);//
             if ($perPage == -1) {
@@ -55,7 +55,7 @@ class CompetitorsController extends RootController
     public function getItem(Request $request, $itemId): JsonResponse
     {
         if ($this->permissions->action_0 == 1) {
-            $result = DB::table(TABLE_COMPETITORS)->find($itemId);
+            $result = DB::table(TABLE_COURIERS)->find($itemId);
             if (!$result) {
                 return response()->json(['error' => 'ITEM_NOT_FOUND', 'messages' => __('Invalid Id ' . $itemId)]);
             }
@@ -98,7 +98,7 @@ class CompetitorsController extends RootController
 
         //edit change checking
         if ($itemId > 0) {
-            $result = DB::table(TABLE_COMPETITORS)->select(array_keys($validation_rule))->find($itemId);
+            $result = DB::table(TABLE_COURIERS)->select(array_keys($validation_rule))->find($itemId);
             if (!$result) {
                 return response()->json(['error' => 'ITEM_NOT_FOUND', 'messages' => __('Invalid Id ' . $itemId)]);
             }
@@ -128,20 +128,20 @@ class CompetitorsController extends RootController
         try {
             $time = Carbon::now();
             $dataHistory = [];
-            $dataHistory['table_name'] = TABLE_COMPETITORS;
+            $dataHistory['table_name'] = TABLE_COURIERS;
             $dataHistory['controller'] = (new \ReflectionClass(__CLASS__))->getShortName();
             $dataHistory['method'] = __FUNCTION__;
             $newId = $itemId;
             if ($itemId > 0) {
                 $itemNew['updated_by'] = $this->user->id;
                 $itemNew['updated_at'] = $time;
-                DB::table(TABLE_COMPETITORS)->where('id', $itemId)->update($itemNew);
+                DB::table(TABLE_COURIERS)->where('id', $itemId)->update($itemNew);
                 $dataHistory['table_id'] = $itemId;
                 $dataHistory['action'] = DB_ACTION_EDIT;
             } else {
                 $itemNew['created_by'] = $this->user->id;
                 $itemNew['created_at'] = $time;
-                $newId = DB::table(TABLE_COMPETITORS)->insertGetId($itemNew);
+                $newId = DB::table(TABLE_COURIERS)->insertGetId($itemNew);
                 $dataHistory['table_id'] = $newId;
                 $dataHistory['action'] = DB_ACTION_ADD;
             }

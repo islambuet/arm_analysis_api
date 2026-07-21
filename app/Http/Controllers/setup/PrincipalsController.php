@@ -83,7 +83,7 @@ class PrincipalsController extends RootController
         //Input validation start
         $validation_rule = [];
         $validation_rule['name'] = ['required'];
-        $validation_rule['code'] = ['required'];
+        $validation_rule['code'] = ['nullable'];
         $validation_rule['contact_person'] = ['nullable'];
         $validation_rule['email'] = ['nullable','email'];
         $validation_rule['mobile_no'] = ['nullable'];

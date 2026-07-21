@@ -7,6 +7,7 @@ define('TABLE_USERS', $db_main.'.users');
 define('TABLE_PRINCIPALS', $db_main.'.principals');
 define('TABLE_COMPETITORS', $db_main.'.competitors');
 define('TABLE_SEASONS', $db_main.'.seasons');
+define('TABLE_COURIERS', $db_main.'.couriers');
 
 define('TABLE_CROPS', $db_main.'.crops');
 define('TABLE_CROP_TYPES', $db_main.'.crop_types');
