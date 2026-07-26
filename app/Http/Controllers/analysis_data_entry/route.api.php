@@ -4,8 +4,8 @@ use App\Http\Controllers as Controllers;
 use Illuminate\Support\Facades\Route;
 
 
-$url='analysis_data_entry/dealers_sales';
-$controllerClass= Controllers\analysis_data_entry\DealersSalesController::class;
+$url='analysis_data_entry/dealers_sales_request';
+$controllerClass= Controllers\analysis_data_entry\DealersSalesRequestController::class;
 /** @noinspection DuplicatedCode */
 Route::middleware('logged-user')->group(function()use ($url,$controllerClass){
     Route::match(['GET','POST'],$url.'/initialize', [$controllerClass, 'initialize']);
