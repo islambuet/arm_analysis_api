@@ -1,21 +1,17 @@
 <?php
-namespace App\Http\Controllers\analysis_data_entry;
-
-use App\Helpers\ConfigurationHelper;
-use App\Http\Controllers\RootController;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
+namespace App\Http\Controllers\dealer_data;
 
 use App\Helpers\TaskHelper;
+use App\Http\Controllers\RootController;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-
-use Illuminate\Validation\Rule;
 
 
 class DealersSalesRequestController extends RootController
 {
-    public $api_url = 'analysis_data_entry/dealers_sales_request';
+    public $api_url = 'dealer_data/dealers_sales_request';
     public $permissions;
 
     public function __construct()
@@ -108,12 +104,18 @@ class DealersSalesRequestController extends RootController
             $query->join(TABLE_LOCATION_PARTS.' as parts', 'parts.id', '=', 'areas.part_id');
             $query->addSelect('parts.name as part_name');
 
-            if($this->user->part_id>0){
-                $query->where('parts.id', $this->user->part_id);
-                if($this->user->area_id>0){
-                    $query->where('areas.id', $this->user->area_id);
-                    if($this->user->territory_id>0){
-                        $query->where('territories.id', $this->user->territory_id);
+            if($options['part_id']>0){
+                $query->where('parts.id','=',$options['part_id']);
+                if($options['area_id']>0){
+                    $query->where('areas.id','=',$options['area_id']);
+                    if($options['territory_id']>0){
+                        $query->where('territories.id','=',$options['territory_id']);
+                        if($options['distributor_id']>0){
+                            $query->where('d.id','=',$options['distributor_id']);
+                            if($options['dealer_id']>0){
+                                $query->where('dealers.id','=',$options['dealer_id']);
+                            }
+                        }
                     }
                 }
             }
