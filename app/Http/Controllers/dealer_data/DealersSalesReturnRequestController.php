@@ -1,21 +1,17 @@
 <?php
-namespace App\Http\Controllers\analysis_data_entry;
-
-use App\Helpers\ConfigurationHelper;
-use App\Http\Controllers\RootController;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
+namespace App\Http\Controllers\dealer_data;
 
 use App\Helpers\TaskHelper;
+use App\Http\Controllers\RootController;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-use Illuminate\Validation\Rule;
 
-
-class DealersSalesReturnController extends RootController
+class DealersSalesReturnRequestController extends RootController
 {
-    public $api_url = 'analysis_data_entry/dealers_sales_return';
+    public $api_url = 'dealer_data/dealers_sales_return_request';
     public $permissions;
 
     public function __construct()
@@ -61,16 +57,23 @@ class DealersSalesReturnController extends RootController
                 ->select('id', 'name','crop_id', 'status')
                 ->orderBy('ordering', 'ASC')
                 ->get();
-            $response['varieties'] = DB::table(TABLE_VARIETIES.' as varieties')
-                ->select('varieties.*')
+            $response['varieties'] = DB::table(TABLE_VARIETIES)
+                ->select('id', 'name','crop_type_id', 'status')
+                ->orderBy('ordering', 'ASC')
+                ->where('whose', 'ARM')
+                ->get();
+            $response['pack_sizes'] = DB::table(TABLE_PACK_SIZES.' as ps')
+                ->select('ps.id', 'ps.name','ps.variety_id', 'ps.status','ps.value')
+                ->join(TABLE_VARIETIES.' as varieties', 'varieties.id', '=', 'ps.variety_id')
+                ->addSelect('varieties.name as variety_name')
                 ->join(TABLE_CROP_TYPES.' as crop_types', 'crop_types.id', '=', 'varieties.crop_type_id')
+                ->addSelect('crop_types.name as type_name')
                 ->join(TABLE_CROPS.' as crops', 'crops.id', '=', 'crop_types.crop_id')
                 ->addSelect('crops.name as crop_name')
-                ->addSelect('crop_types.name as type_name')
-                ->where('whose', 'ARM')
                 ->orderBy('crops.ordering', 'ASC')
                 ->orderBy('crop_types.ordering', 'ASC')
                 ->orderBy('varieties.ordering', 'ASC')
+                ->orderBy('ps.ordering', 'ASC')
                 ->get();
             $response['user_locations']=['part_id'=>$this->user->part_id,'area_id'=>$this->user->area_id,'territory_id'=>$this->user->territory_id];
             return response()->json($response);
@@ -82,7 +85,11 @@ class DealersSalesReturnController extends RootController
     public function getItems(Request $request): JsonResponse
     {
         if ($this->permissions->action_0 == 1) {
-            $perPage = $request->input('perPage', 50);
+            $response=[];
+            $response['error'] = '';
+            $perPage=$request->input('perPage',50);
+            $options = $request->input('options');
+
             //$query=DB::table(TABLE_CROP_TYPES);
             $query=DB::table(TABLE_DEALERS_SALES_RETURN.' as ds');
             $query->select('ds.*');
@@ -97,14 +104,26 @@ class DealersSalesReturnController extends RootController
             $query->join(TABLE_LOCATION_PARTS.' as parts', 'parts.id', '=', 'areas.part_id');
             $query->addSelect('parts.name as part_name');
 
-            if($this->user->part_id>0){
-                $query->where('parts.id', $this->user->part_id);
-                if($this->user->area_id>0){
-                    $query->where('areas.id', $this->user->area_id);
-                    if($this->user->territory_id>0){
-                        $query->where('territories.id', $this->user->territory_id);
+            if($options['part_id']>0){
+                $query->where('parts.id','=',$options['part_id']);
+                if($options['area_id']>0){
+                    $query->where('areas.id','=',$options['area_id']);
+                    if($options['territory_id']>0){
+                        $query->where('territories.id','=',$options['territory_id']);
+                        if($options['distributor_id']>0){
+                            $query->where('d.id','=',$options['distributor_id']);
+                            if($options['dealer_id']>0){
+                                $query->where('dealers.id','=',$options['dealer_id']);
+                            }
+                        }
                     }
                 }
+            }
+            if($options['sales_from']){
+                $query->whereDate('ds.sales_return_at','>=',$options['sales_from']);
+            }
+            if($options['sales_to']){
+                $query->whereDate('ds.sales_return_at','<=',$options['sales_to']);
             }
 
             $query->orderBy('ds.id', 'DESC');
@@ -116,7 +135,8 @@ class DealersSalesReturnController extends RootController
                 }
             }
             $results = $query->paginate($perPage)->toArray();
-            return response()->json(['error'=>'','items'=>$results]);
+            $response['items'] = $results;
+            return response()->json($response);
         } else {
             return response()->json(['error' => 'ACCESS_DENIED', 'messages' => __('You do not have access on this page')]);
         }
@@ -148,8 +168,8 @@ class DealersSalesReturnController extends RootController
                     return response()->json(['error' => 'ITEM_NOT_FOUND', 'messages' => __('Invalid Id ' . $itemId)]);
                 }
                 else{
-                    if ($result->varieties) {
-                        $result->varieties = json_decode($result->varieties);
+                    if ($result->pack_sizes) {
+                        $result->pack_sizes = json_decode($result->pack_sizes);
                         $response['item'] = $result;
                     }
                 }
@@ -159,14 +179,14 @@ class DealersSalesReturnController extends RootController
                 $query = DB::table(TABLE_DEALERS_SALES_RETURN . ' as ds');
                 $query->select('ds.*');
                 $query->where('dealer_id', '=', $itemNew['dealer_id']);
-                //$query->whereDate('sales_return_at', Carbon::today()->toDateString());
+                //$query->whereDate('sales_at', Carbon::today()->toDateString());
                 $query->whereDate('sales_return_at', Carbon::parse($itemNew['sales_return_at'])->toDateString());
-                $query->where('status', '=', SYSTEM_STATUS_ACTIVE);
+                $query->where('status', '!=', SYSTEM_STATUS_DELETE);
 
                 $result = $query->first();
                 if ($result) {
-                    if ($result->varieties) {
-                        $result->varieties = json_decode($result->varieties);
+                    if ($result->pack_sizes) {
+                        $result->pack_sizes = json_decode($result->pack_sizes);
                         $response['item'] = $result;
                     }
                 }
@@ -184,7 +204,7 @@ class DealersSalesReturnController extends RootController
         $validation_rule = [];
         $validation_rule['sales_return_at'] = ['required'];
         $validation_rule['dealer_id'] = ['required','numeric'];
-        $validation_rule['varieties'] = ['required'];
+        $validation_rule['pack_sizes'] = ['required'];
 
         $itemNew = $request->input('item');
         $itemOld = [];
@@ -194,8 +214,8 @@ class DealersSalesReturnController extends RootController
         }
         $this->validateInputKeys($itemNew, array_keys($validation_rule));
 
-        if(isset($itemNew['varieties'])){
-            $itemNew['varieties']=json_encode($itemNew['varieties']);
+        if(isset($itemNew['pack_sizes'])){
+            $itemNew['pack_sizes']=json_encode($itemNew['pack_sizes']);
         }
         else{
             return response()->json(['error' => 'VALIDATION_FAILED', 'messages' => 'No varieties added.']);
@@ -204,11 +224,14 @@ class DealersSalesReturnController extends RootController
         $query=DB::table(TABLE_DEALERS_SALES_RETURN.' as ds');
         $query->select('ds.*');
         $query->where('dealer_id','=',$itemNew['dealer_id']);
-        //$query->whereDate('sales_return_at', Carbon::today()->toDateString());
+        //$query->whereDate('sales_at', Carbon::today()->toDateString());
         $query->whereDate('sales_return_at', Carbon::parse($itemNew['sales_return_at'])->toDateString());
-        $query->where('status', '=', SYSTEM_STATUS_ACTIVE);
+        $query->where('status', '!=', SYSTEM_STATUS_DELETE);
         $result = $query->first();
         if($result){
+            if($result->status=='Approved'){
+                return response()->json(['error' => 'VALIDATION_FAILED', 'messages' => 'Already Approved.']);
+            }
             $itemOld=(array)$result;
             $itemId=$itemOld['id'];
             foreach ($itemOld as $key => $oldValue) {
@@ -278,56 +301,108 @@ class DealersSalesReturnController extends RootController
             return response()->json(['error' => 'DB_SAVE_FAILED', 'messages' => __('Failed to save.')]);
         }
     }
-    public function saveItems(Request $request): JsonResponse
-    {
-        if ($this->permissions->action_7 != 1) {
-            return response()->json(['error' => 'ACCESS_DENIED', 'messages' => __('You do not have access')]);
-        }
-        //permission checking passed
-        $this->checkSaveToken();
-        $itemsNew = $request->input('items');
-        $file_name = $request->input('file_name');
-        if (!$itemsNew) {
-            return response()->json(['error' => 'ITEM_NOT_FOUND', 'messages' => 'No data found']);
-        }
-
-        $id_start=$id_end=1;
-        $result = DB::table(TABLE_DEALERS_SALES_RETURN)->select('id')->orderBy('id','DESC')->first();
-        if($result){
-            $id_start=$id_end=($result->id+1);
-        }
-
-        DB::beginTransaction();
-        try {
-            $time = Carbon::now();
-
-            foreach ($itemsNew as $row){
-                $itemNew=json_decode($row,true);
-                $itemNew['varieties']=json_encode($itemNew['varieties']);
-                $itemNew['created_by'] = $this->user->id;
-                $itemNew['created_at'] = $time;
-                $id_end = DB::table(TABLE_DEALERS_SALES_RETURN)->insertGetId($itemNew);
-            }
-            $dataHistory = [];
-            $dataHistory['table_name'] = TABLE_DEALERS_SALES_RETURN;
-            $dataHistory['controller'] = (new \ReflectionClass(__CLASS__))->getShortName();
-            $dataHistory['method'] = __FUNCTION__;
-            $dataHistory['file_name'] = $file_name;
-            $dataHistory['id_start'] = $id_start;
-            $dataHistory['id_end'] = $id_end;
-            $dataHistory['created_at'] = $time;
-            $dataHistory['created_by'] = $this->user->id;
-            $this->dBSaveHistory($dataHistory, TABLE_SYSTEM_HISTORIES_CSV_UPLOAD);
-
-            $this->updateSaveToken();
-            DB::commit();
-
-            return response()->json(['error' => '', 'messages' => 'Data Uploaded  Successfully']);
-        }
-        catch (\Exception $ex) {
-            DB::rollback();
-            return response()->json(['error' => 'DB_SAVE_FAILED', 'messages' => __('Failed to save.')]);
-        }
-    }
+//    public function saveItems(Request $request): JsonResponse
+//    {
+//        if ($this->permissions->action_7 != 1) {
+//            return response()->json(['error' => 'ACCESS_DENIED', 'messages' => __('You do not have access')]);
+//        }
+//        //permission checking passed
+//        $this->checkSaveToken();
+//        $itemsNew = $request->input('items');
+//        $file_name = $request->input('file_name');
+//        if (!$itemsNew) {
+//            return response()->json(['error' => 'ITEM_NOT_FOUND', 'messages' => 'No data found']);
+//        }
+//
+//        $id_start=$id_end=1;
+//        $result = DB::table(TABLE_DEALERS_SALES_RETURN)->select('id')->orderBy('id','DESC')->first();
+//        if($result){
+//            $id_start=$id_end=($result->id+1);
+//        }
+//
+//        DB::beginTransaction();
+//        try {
+//            $time = Carbon::now();
+//
+//            foreach ($itemsNew as $row){
+//                $itemNew=json_decode($row,true);
+//                $itemNew['varieties']=json_encode($itemNew['varieties']);
+//                $itemNew['created_by'] = $this->user->id;
+//                $itemNew['created_at'] = $time;
+//                $id_end = DB::table(TABLE_DEALERS_SALES_RETURN)->insertGetId($itemNew);
+//            }
+//            $dataHistory = [];
+//            $dataHistory['table_name'] = TABLE_DEALERS_SALES_RETURN;
+//            $dataHistory['controller'] = (new \ReflectionClass(__CLASS__))->getShortName();
+//            $dataHistory['method'] = __FUNCTION__;
+//            $dataHistory['file_name'] = $file_name;
+//            $dataHistory['id_start'] = $id_start;
+//            $dataHistory['id_end'] = $id_end;
+//            $dataHistory['created_at'] = $time;
+//            $dataHistory['created_by'] = $this->user->id;
+//            $this->dBSaveHistory($dataHistory, TABLE_SYSTEM_HISTORIES_CSV_UPLOAD);
+//
+//            $this->updateSaveToken();
+//            DB::commit();
+//
+//            return response()->json(['error' => '', 'messages' => 'Data Uploaded  Successfully']);
+//        }
+//        catch (\Exception $ex) {
+//            DB::rollback();
+//            return response()->json(['error' => 'DB_SAVE_FAILED', 'messages' => __('Failed to save.')]);
+//        }
+//    }
+//    public function deleteItem(Request $request, $itemId): JsonResponse
+//    {
+//        if ($this->permissions->action_3 == 1) {
+//            $response = [];
+//            $response['error'] = '';
+//            $result = DB::table(TABLE_DEALERS_SALES_RETURN)->where('status', '=', SYSTEM_STATUS_ACTIVE)->find($itemId);
+//            if (!$result) {
+//                return response()->json(['error' => 'ITEM_NOT_FOUND', 'messages' => __('Invalid Id ' . $itemId)]);
+//            }
+//            $itemOld['updated_by'] = $result->updated_by;
+//            $itemOld['updated_at'] = $result->updated_at;
+//            $itemOld['status'] = $result->status;
+//            $itemNew['status']=SYSTEM_STATUS_DELETE;
+//
+//            DB::beginTransaction();
+//            try {
+//                $time = Carbon::now();
+//                $dataHistory = [];
+//                $dataHistory['table_name'] = TABLE_DEALERS_SALES_RETURN;
+//                $dataHistory['controller'] = (new \ReflectionClass(__CLASS__))->getShortName();
+//                $dataHistory['method'] = __FUNCTION__;
+//
+//
+//                $itemNew['updated_by'] = $this->user->id;
+//                $itemNew['updated_at'] = $time;
+//                DB::table(TABLE_DEALERS_SALES_RETURN)->where('id', $itemId)->update($itemNew);
+//                $dataHistory['table_id'] = $itemId;
+//                $dataHistory['action'] = DB_ACTION_DELETE;
+//
+//                unset($itemNew['updated_by'],$itemNew['created_by'],$itemNew['created_at'],$itemNew['updated_at']);
+//
+//                $dataHistory['data_old'] = json_encode($itemOld);
+//                $dataHistory['data_new'] = json_encode($itemNew);
+//                $dataHistory['created_at'] = $time;
+//                $dataHistory['created_by'] = $this->user->id;
+//
+//                $this->dBSaveHistory($dataHistory, TABLE_SYSTEM_HISTORIES);
+//
+//                DB::commit();
+//                return response()->json($response);
+//            }
+//            catch (\Exception $ex) {
+//                DB::rollback();
+//                return response()->json(['error' => 'DB_SAVE_FAILED', 'messages' => __('Failed to save.')]);
+//            }
+//
+//
+//
+//        } else {
+//            return response()->json(['error' => 'ACCESS_DENIED', 'messages' => __('You do not have access on this page')]);
+//        }
+//    }
 }
 
