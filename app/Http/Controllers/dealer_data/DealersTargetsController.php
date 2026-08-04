@@ -1,21 +1,17 @@
 <?php
-namespace App\Http\Controllers\analysis_data_entry;
-
-use App\Helpers\ConfigurationHelper;
-use App\Http\Controllers\RootController;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
+namespace App\Http\Controllers\dealer_data;
 
 use App\Helpers\TaskHelper;
+use App\Http\Controllers\RootController;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-
-use Illuminate\Validation\Rule;
 
 
 class DealersTargetsController extends RootController
 {
-    public $api_url = 'analysis_data_entry/dealers_targets';
+    public $api_url = 'dealer_data/dealers_targets';
     public $permissions;
 
     public function __construct()

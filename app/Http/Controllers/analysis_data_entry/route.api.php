@@ -3,16 +3,6 @@
 use App\Http\Controllers as Controllers;
 use Illuminate\Support\Facades\Route;
 
-$url='analysis_data_entry/dealers_sales_return';
-$controllerClass= Controllers\analysis_data_entry\DealersSalesReturnController::class;
-/** @noinspection DuplicatedCode */
-Route::middleware('logged-user')->group(function()use ($url,$controllerClass){
-    Route::match(['GET','POST'],$url.'/initialize', [$controllerClass, 'initialize']);
-    Route::match(['GET','POST'],$url.'/get-items', [$controllerClass, 'getItems']);
-    Route::match(['GET','POST'],$url.'/get-item/{itemId}', [$controllerClass, 'getItem']);
-    Route::post($url.'/save-item', [$controllerClass, 'saveItem']);
-    Route::post($url.'/save-items', [$controllerClass, 'saveItems']);
-});
 $url='analysis_data_entry/dealers_stock';
 $controllerClass= Controllers\analysis_data_entry\DealersStockController::class;
 /** @noinspection DuplicatedCode */
@@ -23,16 +13,7 @@ Route::middleware('logged-user')->group(function()use ($url,$controllerClass){
     Route::post($url.'/save-item', [$controllerClass, 'saveItem']);
     Route::post($url.'/save-items', [$controllerClass, 'saveItems']);
 });
-$url='analysis_data_entry/dealers_targets';
-$controllerClass= Controllers\analysis_data_entry\DealersTargetsController::class;
-/** @noinspection DuplicatedCode */
-Route::middleware('logged-user')->group(function()use ($url,$controllerClass){
-    Route::match(['GET','POST'],$url.'/initialize', [$controllerClass, 'initialize']);
-    Route::match(['GET','POST'],$url.'/get-items', [$controllerClass, 'getItems']);
-    Route::match(['GET','POST'],$url.'/get-item/{itemId}', [$controllerClass, 'getItem']);
-    Route::post($url.'/save-item', [$controllerClass, 'saveItem']);
-    Route::post($url.'/save-items', [$controllerClass, 'saveItems']);
-});
+
 
 
 $url='analysis_data_entry/distributors_plan_3yrs';
