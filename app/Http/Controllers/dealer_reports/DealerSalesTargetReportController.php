@@ -1,21 +1,17 @@
 <?php
-namespace App\Http\Controllers\analysis_reports;
+namespace App\Http\Controllers\dealer_reports;
 
 use App\Helpers\ConfigurationHelper;
+use App\Helpers\TaskHelper;
 use App\Http\Controllers\RootController;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-
-use App\Helpers\TaskHelper;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-
-use Illuminate\Validation\Rule;
 
 
 class DealerSalesTargetReportController extends RootController
 {
-    public $api_url = 'analysis_reports/dealer_sales_target';
+    public $api_url = 'dealer_reports/dealer_sales_target';
     public $permissions;
 
     public function __construct()
@@ -90,8 +86,11 @@ class DealerSalesTargetReportController extends RootController
             $response = [];
             $response['error'] ='';
             $options = $request->input('options');
-            $start_date=($options['fiscal_year']).'-'.ConfigurationHelper::getCurrentFiscalYearStartingMonth().'-01';
-            $end_date=($options['fiscal_year']+1).'-'.ConfigurationHelper::getCurrentFiscalYearStartingMonth().'-01';
+            //$start_date=($options['fiscal_year']).'-'.ConfigurationHelper::getCurrentFiscalYearStartingMonth().'-01';
+            //$end_date=($options['fiscal_year']+1).'-'.ConfigurationHelper::getCurrentFiscalYearStartingMonth().'-01';
+
+            $start_date=$options['sales_from'];
+            $end_date=$options['sales_to'];
             //varieties unit price setup for target start
             $results = DB::table(TABLE_PACK_SIZES)
                 ->select('variety_id')
@@ -119,6 +118,12 @@ class DealerSalesTargetReportController extends RootController
 
             }
             //varieties unit price setup for target end
+            $results = DB::table(TABLE_PACK_SIZES)->get();
+            $pack_sizes=[];
+            foreach($results as $result){
+                $pack_sizes[$result->id]=$result;
+            }
+
             $response['sales_targets']=[];
             //sales start
             $query=DB::table(TABLE_DEALERS_SALES.' as ds');
@@ -130,7 +135,7 @@ class DealerSalesTargetReportController extends RootController
 
             $query->where('ds.sales_at','>=',$start_date);
             $query->where('ds.sales_at','<',$end_date);
-            $query->where('ds.status', '=', SYSTEM_STATUS_ACTIVE);
+            $query->where('ds.status', '=', 'Approved');
             if($options['part_id']>0){
                 $query->where('areas.part_id','=',$options['part_id']);
                 if($options['area_id']>0){
@@ -148,33 +153,40 @@ class DealerSalesTargetReportController extends RootController
             }
 
             $results=$query->get();
+
             foreach ($results as $result){
                 if($result){
-                    if($result->varieties){
-                        $varieties=json_decode($result->varieties);
-                        foreach ($varieties as $variety_id=>$quantity){
+                    if($result->pack_sizes){
+                        $Sales_pack_sizes=json_decode($result->pack_sizes);
+                        foreach ($Sales_pack_sizes as $pack_size_id=>$quantity){//in pkt
                             if(is_numeric($quantity)){
-                                if(!isset($response['sales_targets'][$variety_id])){
-                                    $response['sales_targets'][$variety_id]=[];
-                                    $response['sales_targets'][$variety_id]['unit_price']=0;
-                                    if(isset($varieties_unit_price_per_kg[$variety_id])){
-                                        $response['sales_targets'][$variety_id]['unit_price']=$varieties_unit_price_per_kg[$variety_id];
-                                    }
-                                    $response['sales_targets'][$variety_id]['dealers']=[];
-                                }
-                                if(isset($response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]))
+                                if(isset($pack_sizes[$pack_size_id]))
                                 {
-                                    $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['quantity_sales_gross']+=$quantity;
-                                    $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['amount_sales_gross']+=($quantity*$response['sales_targets'][$variety_id]['unit_price']);
-                                }
-                                else{
-                                    $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]=[];
-                                    $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['quantity_target']=0;
-                                    $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['amount_target']=0;
-                                    $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['quantity_sales_gross']=$quantity;
-                                    $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['amount_sales_gross']=$quantity*$response['sales_targets'][$variety_id]['unit_price'];
-                                    $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['quantity_sales_cancel']=0;
-                                    $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['amount_sales_cancel']=0;
+                                    $variety_id=$pack_sizes[$pack_size_id]->variety_id;
+                                    $pack_size_value=$pack_sizes[$pack_size_id]->value;
+
+                                    if(!isset($response['sales_targets'][$variety_id])){
+                                        $response['sales_targets'][$variety_id]=[];
+                                        $response['sales_targets'][$variety_id]['unit_price']=0;
+                                        if(isset($varieties_unit_price_per_kg[$variety_id])){
+                                            $response['sales_targets'][$variety_id]['unit_price']=$varieties_unit_price_per_kg[$variety_id];
+                                        }
+                                        $response['sales_targets'][$variety_id]['dealers']=[];
+                                    }
+                                    if(isset($response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]))
+                                    {
+                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['quantity_sales_gross']+=($quantity*$pack_size_value/1000);//in kg
+                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['amount_sales_gross']+=(($quantity*$pack_size_value/1000)*$response['sales_targets'][$variety_id]['unit_price']);
+                                    }
+                                    else{
+                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]=[];
+                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['quantity_target']=0;
+                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['amount_target']=0;
+                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['quantity_sales_gross']=($quantity*$pack_size_value/1000);//in kg
+                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['amount_sales_gross']=(($quantity*$pack_size_value/1000)*$response['sales_targets'][$variety_id]['unit_price']);
+                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['quantity_sales_cancel']=0;
+                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['amount_sales_cancel']=0;
+                                    }
                                 }
                             }
                         }
@@ -194,7 +206,7 @@ class DealerSalesTargetReportController extends RootController
 
             $query->where('ds.sales_return_at','>=',$start_date);
             $query->where('ds.sales_return_at','<',$end_date);
-            $query->where('ds.status', '=', SYSTEM_STATUS_ACTIVE);
+            $query->where('ds.status', '=', 'Approved');
             if($options['part_id']>0){
                 $query->where('areas.part_id','=',$options['part_id']);
                 if($options['area_id']>0){
@@ -214,31 +226,33 @@ class DealerSalesTargetReportController extends RootController
             $results=$query->get();
             foreach ($results as $result){
                 if($result){
-                    if($result->varieties){
-                        $varieties=json_decode($result->varieties);
-                        foreach ($varieties as $variety_id=>$quantity){
+                    if($result->pack_sizes){
+                        $Sales_pack_sizes=json_decode($result->pack_sizes);
+                        foreach ($Sales_pack_sizes as $pack_size_id=>$quantity){//in pkt
                             if(is_numeric($quantity)){
-                                if(!isset($response['sales_targets'][$variety_id])){
-                                    $response['sales_targets'][$variety_id]=[];
-                                    $response['sales_targets'][$variety_id]['unit_price']=0;
-                                    if(isset($varieties_unit_price_per_kg[$variety_id])){
-                                        $response['sales_targets'][$variety_id]['unit_price']=$varieties_unit_price_per_kg[$variety_id];
+                                if(isset($pack_sizes[$pack_size_id])) {
+                                    $variety_id=$pack_sizes[$pack_size_id]->variety_id;
+                                    $pack_size_value=$pack_sizes[$pack_size_id]->value;
+                                    if (!isset($response['sales_targets'][$variety_id])) {
+                                        $response['sales_targets'][$variety_id] = [];
+                                        $response['sales_targets'][$variety_id]['unit_price'] = 0;
+                                        if (isset($varieties_unit_price_per_kg[$variety_id])) {
+                                            $response['sales_targets'][$variety_id]['unit_price'] = $varieties_unit_price_per_kg[$variety_id];
+                                        }
+                                        $response['sales_targets'][$variety_id]['dealers'] = [];
                                     }
-                                    $response['sales_targets'][$variety_id]['dealers']=[];
-                                }
-                                if(isset($response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]))
-                                {
-                                    $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['quantity_sales_cancel']+=$quantity;
-                                    $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['amount_sales_cancel']+=($quantity*$response['sales_targets'][$variety_id]['unit_price']);
-                                }
-                                else{
-                                    $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]=[];
-                                    $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['quantity_target']=0;
-                                    $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['amount_target']=0;
-                                    $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['quantity_sales_gross']=0;
-                                    $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['amount_sales_gross']=0;
-                                    $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['quantity_sales_cancel']=$quantity;
-                                    $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['amount_sales_cancel']=$quantity*$response['sales_targets'][$variety_id]['unit_price'];
+                                    if (isset($response['sales_targets'][$variety_id]['dealers'][$result->dealer_id])) {
+                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['quantity_sales_cancel'] += ($quantity*$pack_size_value/1000);//in kg
+                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['amount_sales_cancel'] += (($quantity*$pack_size_value/1000) * $response['sales_targets'][$variety_id]['unit_price']);
+                                    } else {
+                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id] = [];
+                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['quantity_target'] = 0;
+                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['amount_target'] = 0;
+                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['quantity_sales_gross'] = 0;
+                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['amount_sales_gross'] = 0;
+                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['quantity_sales_cancel'] = ($quantity*$pack_size_value/1000);
+                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['amount_sales_cancel'] = (($quantity*$pack_size_value/1000) * $response['sales_targets'][$variety_id]['unit_price']);
+                                    }
                                 }
                             }
                         }
