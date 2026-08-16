@@ -137,8 +137,11 @@ class GenerateEligibleListController extends RootController
                     $query->where('areas.id','=',$options['area_id']);
                     if($options['territory_id']>0){
                         $query->where('territories.id','=',$options['territory_id']);
-                        if($options['dealer_id']>0){
-                            $query->where('dealers.id','=',$options['dealer_id']);
+                        if($options['distributor_id']>0){
+                            $query->where('d.id','=',$options['distributor_id']);
+                            if($options['dealer_id']>0){
+                                $query->where('dealers.id','=',$options['dealer_id']);
+                            }
                         }
                     }
                 }
@@ -246,6 +249,12 @@ class GenerateEligibleListController extends RootController
         }
 
         //sales start
+        $results = DB::table(TABLE_PACK_SIZES)->get();
+        $pack_sizes=[];
+        foreach($results as $result){
+            $pack_sizes[$result->id]=$result;
+        }
+
         $query=DB::table(TABLE_DEALERS_SALES.' as ds');
         $query->select('ds.*');
         $query->join(TABLE_DEALERS.' as dealers', 'dealers.id', '=', 'ds.dealer_id');
@@ -253,31 +262,30 @@ class GenerateEligibleListController extends RootController
         //if($itemNew['generated_at']<=$lastGeneratedDate->generated_at){
         $query->whereDate('ds.sales_at','>',$lastGeneratedDate->generated_at);
         $query->whereDate('ds.sales_at','<=',$itemNew['generated_at']);
-        $query->where('ds.status', '=', SYSTEM_STATUS_ACTIVE);
+        $query->where('ds.status', '=', 'Approved');
         $results=$query->get();
         foreach ($results as $result){
             if($result){
-                if($result->varieties) {
-                    $varieties = json_decode($result->varieties);
-                    foreach ($varieties as $variety_id => $quantity) {
+                if($result->pack_sizes){
+                    $Sales_pack_sizes=json_decode($result->pack_sizes);
+                    foreach ($Sales_pack_sizes as $pack_size_id=>$quantity) {//in pkt
                         if (is_numeric($quantity)) {
-                            if(isset($varieties_bonus_id[$variety_id])){
-                                if(isset($dealers_bonus_data[$result->dealer_id])){//always true. also variety bonus exits
-                                    $dealers_bonus_data[$result->dealer_id][$varieties_bonus_id[$variety_id]]['quantity_sales']+=$quantity;
-                                    $dealers_bonus_data[$result->dealer_id][$varieties_bonus_id[$variety_id]]['quantity_balance_new']+=$quantity;
+                            if(isset($pack_sizes[$pack_size_id])){
+                                $variety_id=$pack_sizes[$pack_size_id]->variety_id;
+                                $pack_size_value=$pack_sizes[$pack_size_id]->value;
+                                if(isset($varieties_bonus_id[$variety_id])){
+                                    if(isset($dealers_bonus_data[$result->dealer_id])){//always true. also variety bonus exits
+                                        $dealers_bonus_data[$result->dealer_id][$varieties_bonus_id[$variety_id]]['quantity_sales']+=($quantity*$pack_size_value/1000);//in kg
+                                        $dealers_bonus_data[$result->dealer_id][$varieties_bonus_id[$variety_id]]['quantity_balance_new']+=($quantity*$pack_size_value/1000);//in kg
+                                    }
                                 }
                             }
-
                         }
                     }
                 }
             }
         }
         //sales end
-//echo '<pre>';
-//print_r($dealers_bonus_data[137]);
-//echo '</pre>';
-//die();
         DB::beginTransaction();
         try {
             $time = Carbon::now();
