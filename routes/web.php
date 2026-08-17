@@ -13,3 +13,4 @@ Route::match(['GET','POST'],$url.'/distributors_sales', [$controllerClass, 'dist
 Route::match(['GET','POST'],$url.'/distributors_targets', [$controllerClass, 'distributors_targets']);
 Route::match(['GET','POST'],$url.'/incentive_varieties', [$controllerClass, 'incentive_varieties']);
 Route::match(['GET','POST'],$url.'/market_size_setup_territory', [$controllerClass, 'market_size_setup_territory']);
+Route::match(['GET','POST'],$url.'/dealer_sales', [$controllerClass, 'dealer_sales']);

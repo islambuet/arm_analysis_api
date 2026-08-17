@@ -242,4 +242,58 @@ class ImportController extends Controller
         }
         echo 'The end';
     }
+    public function dealer_sales()
+    {
+        die();
+
+        $time = Carbon::now();
+        $row=$num_records = 0;
+        $csvFile = file('C:\Users\shaiful\Desktop\analysis/sales.csv');
+        $data=[];
+
+        echo '<table border="1" cellpadding="2" cellspacing="2">';
+        echo '<tr><td>#</td><td>dealer_id</td><td>Entry Time</td<td>pack_size_id</td><td>quantity</td><td>Report</td></tr>';
+        foreach ($csvFile as $line) {
+
+            $entry = str_getcsv($line);
+            $itemNew['id']= trim($entry[0]);
+            $itemNew['sales_at']= trim($entry[1]);
+            $itemNew['dealer_id']= trim($entry[2]);
+            $itemNew['pack_size_id']= trim($entry[3]);
+            $itemNew['quantity']= trim($entry[4]);
+            $data[$itemNew['dealer_id']][$itemNew['sales_at']]['pack_sizes'][$itemNew['pack_size_id']]=$itemNew['quantity'];
+        }
+        foreach ($data as $dealer_id=>$dealer_data){
+            foreach ($dealer_data as $sales_at=>$sales_data){
+                $row++;
+                $num_records++;
+                $item=[];
+                $item['dealer_id']=$dealer_id;
+                $item['sales_at']=$sales_at;
+                $item['pack_sizes']=json_encode($sales_data['pack_sizes']);
+                $item['status']='Approved';
+                $item['created_by']=2;
+                $item['created_at'] = $time;
+                $item['approved_by']=2;
+                $item['approved_at'] = $time;
+                $insert_result  = DB::table(TABLE_DEALERS_SALES)->insertGetId($item);
+                if($insert_result)
+                {
+                    $report = "Inserted";
+                }
+                else
+                {
+                    $report = "Failed";
+                }
+
+
+                echo '<tr><td>'.$row.'</td><td>'.$item['dealer_id'].'</td><td>'.$item['sales_at'].'</td><td>'.$item['pack_sizes'].'</td><td>'.$report.'</td></tr>';
+
+            }
+
+
+        }
+        echo '</table>';
+        echo 'Total Records: '.$num_records;
+    }
 }
