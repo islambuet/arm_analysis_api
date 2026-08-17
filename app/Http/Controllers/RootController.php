@@ -29,7 +29,7 @@ abstract class RootController extends Controller
             $path=\Request::path();
             if(!(
                 str_starts_with($path, 'api/user/')||
-                str_starts_with($path, 'api/system-configurations/')
+                str_starts_with($path, 'api/system/configurations/')
 
             ))
             {
