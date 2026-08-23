@@ -47,8 +47,13 @@ class EligibleListController extends RootController
                 ->orderBy('name', 'ASC')
                 ->get();
             $response['dealers'] = DB::table(TABLE_DEALERS)
-                ->select('id', 'name','distributor_id', 'status')
+                ->select('id', 'name','distributor_id','address','mobile_no','status')
                 ->orderBy('name', 'ASC')
+                ->get();
+            $response['couriers'] = DB::table(TABLE_COURIERS)
+                ->select('id', 'name', 'status')
+                ->orderBy('name', 'ASC')
+                ->orderBy('id', 'ASC')
                 ->get();
 
             $response['crops'] = DB::table(TABLE_CROPS)
@@ -64,6 +69,19 @@ class EligibleListController extends RootController
                 ->orderBy('crops.id', 'ASC')
                 ->orderBy('crop_types.ordering', 'ASC')
                 ->orderBy('crop_types.id', 'ASC')
+                ->get();
+            $response['pack_sizes'] = DB::table(TABLE_PACK_SIZES.' as ps')
+                ->select('ps.id', 'ps.name','ps.variety_id', 'ps.status','ps.value')
+                ->join(TABLE_VARIETIES.' as varieties', 'varieties.id', '=', 'ps.variety_id')
+                ->addSelect('varieties.name as variety_name')
+                ->join(TABLE_CROP_TYPES.' as crop_types', 'crop_types.id', '=', 'varieties.crop_type_id')
+                ->addSelect('crop_types.name as type_name')
+                ->join(TABLE_CROPS.' as crops', 'crops.id', '=', 'crop_types.crop_id')
+                ->addSelect('crops.name as crop_name')
+                ->orderBy('crops.ordering', 'ASC')
+                ->orderBy('crop_types.ordering', 'ASC')
+                ->orderBy('varieties.ordering', 'ASC')
+                ->orderBy('ps.ordering', 'ASC')
                 ->get();
             $response['lastGeneratedDate'] = DB::table(TABLE_DEALER_PRODUCT_BONUS_GENERATE_DATE)
                 ->orderBy('id', 'DESC')
@@ -177,7 +195,6 @@ class EligibleListController extends RootController
     public function saveItem(Request $request): JsonResponse
     {
         $combineIds = $request->input('id', 0);
-        $combineIds = $request->input('id', 0);
         $temp= explode('_', $combineIds);
         $itemId=0;
         $bonus_id=0;
@@ -197,27 +214,24 @@ class EligibleListController extends RootController
         $this->checkSaveToken();
         //Input validation start
         $validation_rule = [];
-        $validation_rule['quantity'] = ['required'];
-        $validation_rule['remarks'] = ['nullable'];
+        $validation_rule['delivery_at'] = ['required'];
+        $validation_rule['courier_id'] = ['required'];
+        $validation_rule['quantity_adjust'] = ['required'];
+        $validation_rule['pack_sizes'] = ['nullable'];
 
         $itemNew = $request->input('item');
-
-
         $this->validateInputKeys($itemNew, array_keys($validation_rule));
         $this->validateInputValues($itemNew, $validation_rule);
+
         $time = Carbon::now();
         if(isset($bonus_array[$bonus_id]))
         {
-            $bonus_array[$bonus_id]['quantity_delivered']+=$itemNew['quantity'];
-            $bonus_array[$bonus_id]['quantity_num_delivered']+=1;
-            $bonus_array[$bonus_id]['quantity_balance_new']-=$itemNew['quantity'];
-
-            $delivery_array[$bonus_id][]=[
-                'quantity'=>$itemNew['quantity'],
-                'remarks'=>$itemNew['remarks'],
-                'created_by' => $this->user->id,
-                'created_at' => $time
-            ];
+            $bonus_array[$bonus_id]['quantity_delivered']+=$itemNew['quantity_adjust'];//quantity_delivered means quantity_adjusted
+            $bonus_array[$bonus_id]['quantity_num_delivered']+=1;//will be always 1
+            $bonus_array[$bonus_id]['quantity_balance_new']-=$itemNew['quantity_adjust'];//only new. edit not handled
+            $itemNew['created_by']= $this->user->id;
+            $itemNew['created_at']= $time;
+            $delivery_array[$bonus_id]=$itemNew;
             //Input validation ends
             DB::beginTransaction();
             try {
