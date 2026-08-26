@@ -219,12 +219,12 @@ class GenerateEligibleListController extends RootController
         foreach ($dealers as $dealer){
             $dbd=[];
             foreach ($product_bonus_setups as $pbs_id=>$pbs){
-                $dbd[$pbs_id]['quantity_eligible']=$pbs->quantity;
+                $dbd[$pbs_id]['product_bonus_quantity']=$pbs->quantity;
+                $dbd[$pbs_id]['product_bonus_percentage']=$pbs->percentage_bonus;
                 $dbd[$pbs_id]['quantity_balance_old']=0;
                 $dbd[$pbs_id]['quantity_sales']=0;
                 $dbd[$pbs_id]['quantity_balance_new']=0;
-                $dbd[$pbs_id]['quantity_delivered']=0;
-                $dbd[$pbs_id]['quantity_num_delivered']=0;
+                $dbd[$pbs_id]['quantity_balance_adjusted']=0;
             }
             $dealers_bonus_data[$dealer->id]=$dbd;
         }
