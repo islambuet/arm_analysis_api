@@ -216,7 +216,7 @@ class EligibleListController extends RootController
         $validation_rule = [];
         $validation_rule['delivery_at'] = ['required'];
         $validation_rule['courier_id'] = ['required'];
-        $validation_rule['quantity_adjust'] = ['required'];
+        $validation_rule['quantity_balance_adjusted'] = ['required'];
         $validation_rule['pack_sizes'] = ['nullable'];
 
         $itemNew = $request->input('item');
@@ -226,9 +226,8 @@ class EligibleListController extends RootController
         $time = Carbon::now();
         if(isset($bonus_array[$bonus_id]))
         {
-            $bonus_array[$bonus_id]['quantity_delivered']+=$itemNew['quantity_adjust'];//quantity_delivered means quantity_adjusted
-            $bonus_array[$bonus_id]['quantity_num_delivered']+=1;//will be always 1
-            $bonus_array[$bonus_id]['quantity_balance_new']-=$itemNew['quantity_adjust'];//only new. edit not handled
+            $bonus_array[$bonus_id]['quantity_balance_adjusted']+=$itemNew['quantity_balance_adjusted'];
+            $bonus_array[$bonus_id]['quantity_balance_new']-=$itemNew['quantity_balance_adjusted'];//only new. edit not handled
             $itemNew['created_by']= $this->user->id;
             $itemNew['created_at']= $time;
             $delivery_array[$bonus_id]=$itemNew;
