@@ -258,15 +258,11 @@ class EligibleListController extends RootController
         $temp= explode('_', $combineIds);
         $itemId=0;
         $bonus_id=0;
-        $delete_index=-1;
         if(isset($temp[0])){
             $itemId=$temp[0];
         }
         if(isset($temp[1])){
             $bonus_id=$temp[1];
-        }
-        if(isset($temp[2])){
-            $delete_index=$temp[2];
         }
 
         $result = DB::table(TABLE_DEALER_PRODUCT_BONUS_GENERATE_BONUS)->find($itemId);
@@ -278,41 +274,21 @@ class EligibleListController extends RootController
 
         if(isset($delivery_array[$bonus_id]))
         {
-            if(isset($delivery_array[$bonus_id][$delete_index]))
-            {
-                $delivery_datum=$delivery_array[$bonus_id][$delete_index];
-                if(isset($bonus_array[$bonus_id]))
-                {
-                    $bonus_array[$bonus_id]['quantity_delivered']-=$delivery_datum['quantity'];
-                    $bonus_array[$bonus_id]['quantity_num_delivered']-=1;
-                    $bonus_array[$bonus_id]['quantity_balance_new']+=$delivery_datum['quantity'];
-
-                    unset($delivery_array[$bonus_id][$delete_index]);
-                    //Input validation ends
-                    DB::beginTransaction();
-                    try {
-                        DB::table(TABLE_DEALER_PRODUCT_BONUS_GENERATE_BONUS)->where('id', $itemId)->update(
-                            [
-                                'delivery_data'=>json_encode($delivery_array),
-                                'bonus_data'=>json_encode($bonus_array)
-                            ]
-                        );
-                        $this->updateSaveToken();
-                        DB::commit();
-
-                        return response()->json(['error' => '', 'messages' => 'Data Updated Successfully']);
-                    } catch (\Exception $ex) {
-                        DB::rollback();
-                        return response()->json(['error' => 'DB_SAVE_FAILED', 'messages' => __('Failed to save.')]);
-                    }
-                }
-                else{
-                    return response()->json(['error' => 'VALIDATION_FAILED', 'messages' => 'Bonus Id not found']);
-                }
-
-            }
-            else{
-                return response()->json(['error' => 'VALIDATION_FAILED', 'messages' => 'Delivery not found']);
+            $bonus_array[$bonus_id]['quantity_balance_adjusted']-=$delivery_array[$bonus_id]['quantity_balance_adjusted'];
+            $bonus_array[$bonus_id]['quantity_balance_new']+=$delivery_array[$bonus_id]['quantity_balance_adjusted'];
+            unset($delivery_array[$bonus_id]);
+            try {
+                DB::table(TABLE_DEALER_PRODUCT_BONUS_GENERATE_BONUS)->where('id', $itemId)->update(
+                    [
+                        'delivery_data'=>json_encode($delivery_array),
+                        'bonus_data'=>json_encode($bonus_array)
+                    ]
+                );
+                DB::commit();
+                return response()->json(['error' => '', 'messages' => 'Data Updated Successfully']);
+            } catch (\Exception $ex) {
+                DB::rollback();
+                return response()->json(['error' => 'DB_SAVE_FAILED', 'messages' => __('Failed to save.')]);
             }
 
         }
