@@ -297,5 +297,65 @@ class EligibleListController extends RootController
         }
 
     }
+    public function saveCourierInfo(Request $request): JsonResponse
+    {
+        $combineIds = $request->input('id', 0);
+        $temp= explode('_', $combineIds);
+        $itemId=0;
+        $bonus_id=0;
+        if(isset($temp[0])){
+            $itemId=$temp[0];
+        }
+        if(isset($temp[1])){
+            $bonus_id=$temp[1];
+        }
+        $result = DB::table(TABLE_DEALER_PRODUCT_BONUS_GENERATE_BONUS)->find($itemId);
+        if (!$result) {
+            return response()->json(['error' => 'ITEM_NOT_FOUND', 'messages' => __('Invalid Id ' . $itemId)]);
+        }
+
+
+        $delivery_array=json_decode($result->delivery_data,true);
+        //permission checking passed
+        $this->checkSaveToken();
+        //Input validation start
+        $validation_rule = [];
+        $validation_rule['courier_tracking_number'] = ['nullable'];
+        $validation_rule['courier_destination'] = ['nullable'];
+
+        $itemNew = $request->input('item');
+        $this->validateInputKeys($itemNew, array_keys($validation_rule));
+        $this->validateInputValues($itemNew, $validation_rule);
+
+        $time = Carbon::now();
+        if(isset($delivery_array[$bonus_id]))
+        {
+            $delivery_array[$bonus_id]['courier_tracking_number']=$itemNew['courier_tracking_number'];
+            $delivery_array[$bonus_id]['courier_destination']=$itemNew['courier_destination'];
+
+            $delivery_array[$bonus_id]['courier_by']= $this->user->id;
+            $delivery_array[$bonus_id]['courier_at']= $time;
+
+            //Input validation ends
+            DB::beginTransaction();
+            try {
+                DB::table(TABLE_DEALER_PRODUCT_BONUS_GENERATE_BONUS)->where('id', $itemId)->update(
+                    [
+                        'delivery_data'=>json_encode($delivery_array)
+                    ]
+                );
+                $this->updateSaveToken();
+                DB::commit();
+
+                return response()->json(['error' => '', 'messages' => 'Data Updated Successfully']);
+            } catch (\Exception $ex) {
+                DB::rollback();
+                return response()->json(['error' => 'DB_SAVE_FAILED', 'messages' => __('Failed to save.')]);
+            }
+        }
+        else{
+            return response()->json(['error' => 'VALIDATION_FAILED', 'messages' => 'Bonus Id not found']);
+        }
+    }
 }
 
