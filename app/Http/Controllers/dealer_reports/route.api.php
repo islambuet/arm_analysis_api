@@ -17,3 +17,10 @@ Route::middleware('logged-user')->group(function()use ($url,$controllerClass){
     Route::match(['GET','POST'],$url.'/initialize', [$controllerClass, 'initialize']);
     Route::match(['GET','POST'],$url.'/get-items', [$controllerClass, 'getItems']);
 });
+$url='dealer_reports/dealer_sales_distributor_vs_dealer';
+$controllerClass= Controllers\dealer_reports\DealerSalesDistributorDealerReportController::class;
+/** @noinspection DuplicatedCode */
+Route::middleware('logged-user')->group(function()use ($url,$controllerClass){
+    Route::match(['GET','POST'],$url.'/initialize', [$controllerClass, 'initialize']);
+    Route::match(['GET','POST'],$url.'/get-items', [$controllerClass, 'getItems']);
+});
