@@ -94,7 +94,6 @@ class DealerSalesDealerBonusReportController extends RootController
             $response['error'] ='';
             $items=[];
             $options = $request->input('options');
-            $options['dealer_id']=19;
             if(!($options['dealer_id']>0)){
                 return response()->json(['error' => 'VALIDATION_FAILED', 'messages' => 'Select Dealer']);
             }
@@ -225,7 +224,60 @@ class DealerSalesDealerBonusReportController extends RootController
                 }
             }
             //dealer sales cancel ends
+            //Target fiscal year start
 
+            $query=DB::table(TABLE_DEALERS_TARGETS.' as ds');
+            $query->select('ds.*');
+
+            $query->where('ds.fiscal_year','=',$options['fiscal_year']);
+            $query->where('ds.status', '=', SYSTEM_STATUS_ACTIVE);
+            $query->where('ds.dealer_id','=',$options['dealer_id']);
+
+
+            $results=$query->get();
+
+            foreach ($results as $result){
+                if($result){
+                    if($result->varieties){
+                        $varieties=json_decode($result->varieties);
+                        foreach ($varieties as $variety_id=>$quantity){
+                            if(is_numeric($quantity)){
+                                $bonus_id = 0;
+                                if (isset($varieties_bonus_id[$variety_id])) {
+                                    $bonus_id=$varieties_bonus_id[$variety_id];
+                                }
+                                if(isset($items[$bonus_id])){
+                                    $items[$bonus_id]['quantity_target']+=($quantity);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            //Target fiscal year end
+            //bonus data start
+            $query=DB::table(TABLE_DEALER_PRODUCT_BONUS_GENERATE_BONUS.' as pbgb');
+            $query->select('pbgb.*');
+            $query->join(TABLE_DEALER_PRODUCT_BONUS_GENERATE_DATE.' as pd', 'pd.id', '=', 'pbgb.generated_date_id');
+            $query->where('pbgb.status', '=', SYSTEM_STATUS_ACTIVE);
+            $query->where('pbgb.dealer_id','=',$options['dealer_id']);
+            //$query->where('pbgb.dealer_id','=',1);
+            if($options['sales_from']){
+                $query->whereDate('pd.generated_at','>=',$options['sales_from']);
+            }
+            if($options['sales_to']){
+                $query->whereDate('pd.generated_at','<=',$options['sales_to']);
+            }
+            $results=$query->get();
+            foreach ($results as $result){
+                $delivery_data=json_decode($result->delivery_data,true);
+                foreach ($delivery_data as $bonus_id=>$datum){
+                    if(isset($items[$bonus_id])){
+                        $items[$bonus_id]['quantity_bonus_adjusted']+=$datum['quantity_balance_adjusted'];
+                    }
+                }
+            }
             $response['items']=$items;
             return response()->json($response);
         } else {
