@@ -93,6 +93,8 @@ class DealerSalesStatementSummaryReportController extends RootController
             $end_date=$options['sales_to'];
             //initialize items start
             $items=[];
+            $dealers_ids=[];
+            $dealers_data=[];
             $query=DB::table(TABLE_DEALERS.' as dealers');
             $query->select('dealers.*');
             $query->join(TABLE_DISTRIBUTORS.' as d', 'd.id', '=', 'dealers.distributor_id');
@@ -119,6 +121,14 @@ class DealerSalesStatementSummaryReportController extends RootController
                     }
                 }
             }
+            if($options['status']!='All'){
+                $query->where('dealers.status','=',$options['status']);
+            }
+            $query->orderBy('parts.name', 'ASC');
+            $query->orderBy('areas.name', 'ASC');
+            $query->orderBy('territories.name', 'ASC');
+            $query->orderBy('d.name', 'ASC');
+            $query->orderBy('dealers.name', 'ASC');
             $results=$query->get();
             foreach ($results as $result){
                 $item=[];
@@ -128,7 +138,8 @@ class DealerSalesStatementSummaryReportController extends RootController
                 $item['distributor_name']=$result->distributor_name;
                 $item['dealer_name']=$result->name;
                 $item['credit_limit']=$result->credit_limit;
-                $item['opening_balance']=$result->credit_limit;
+                //$item['opening_balance']=$result->opening_balance;
+                $item['opening_balance']=0;
                 $item['sales_gross']=0;
                 $item['sales_canceled']=0;
                 $item['payment_total']=0;
@@ -136,12 +147,13 @@ class DealerSalesStatementSummaryReportController extends RootController
                 $item['last_invoice_duration']=-1;
                 $item['last_payment_date']='';
                 $item['last_payment_duration']=-1;
-                $items[]=$item;
+                $dealers_data[$result->id]=$item;
+                $dealers_ids[]=$result->id;
+                //$items[]=$item;
             }
-
             //initialize items end
-            /*
-            //varieties unit price setup for target start
+
+            //varieties unit price calculation
             $results = DB::table(TABLE_PACK_SIZES)
                 ->select('variety_id')
                 ->addSelect(DB::raw('AVG(unit_price_per_kg) as unit_price_per_kg'))
@@ -167,41 +179,24 @@ class DealerSalesStatementSummaryReportController extends RootController
                 }
 
             }
-            //varieties unit price setup for target end
+            //varieties unit price calculation end
+
+
             $results = DB::table(TABLE_PACK_SIZES)->get();
             $pack_sizes=[];
             foreach($results as $result){
                 $pack_sizes[$result->id]=$result;
             }
 
-            $response['sales_targets']=[];
             //sales start
             $query=DB::table(TABLE_DEALERS_SALES.' as ds');
             $query->select('ds.*');
-            $query->join(TABLE_DEALERS.' as dealers', 'dealers.id', '=', 'ds.dealer_id');
-            $query->join(TABLE_DISTRIBUTORS.' as d', 'd.id', '=', 'dealers.distributor_id');
-            $query->join(TABLE_LOCATION_TERRITORIES.' as territories', 'territories.id', '=', 'd.territory_id');
-            $query->join(TABLE_LOCATION_AREAS.' as areas', 'areas.id', '=', 'territories.area_id');
 
-            $query->where('ds.sales_at','>=',$start_date);
+            //$query->where('ds.sales_at','>=',$start_date);
             $query->where('ds.sales_at','<',$end_date);
             $query->where('ds.status', '=', 'Approved');
-            if($options['part_id']>0){
-                $query->where('areas.part_id','=',$options['part_id']);
-                if($options['area_id']>0){
-                    $query->where('areas.id','=',$options['area_id']);
-                    if($options['territory_id']>0){
-                        $query->where('territories.id','=',$options['territory_id']);
-                        if($options['distributor_id']>0){
-                            $query->where('d.id','=',$options['distributor_id']);
-                            if($options['dealer_id']>0){
-                                $query->where('dealers.id','=',$options['dealer_id']);
-                            }
-                        }
-                    }
-                }
-            }
 
+            $query->whereIn('ds.dealer_id',$dealers_ids);//if array is empty it produces where 0=1
             $results=$query->get();
 
             foreach ($results as $result){
@@ -214,28 +209,14 @@ class DealerSalesStatementSummaryReportController extends RootController
                                 {
                                     $variety_id=$pack_sizes[$pack_size_id]->variety_id;
                                     $pack_size_value=$pack_sizes[$pack_size_id]->value;
-
-                                    if(!isset($response['sales_targets'][$variety_id])){
-                                        $response['sales_targets'][$variety_id]=[];
-                                        $response['sales_targets'][$variety_id]['unit_price']=0;
-                                        if(isset($varieties_unit_price_per_kg[$variety_id])){
-                                            $response['sales_targets'][$variety_id]['unit_price']=$varieties_unit_price_per_kg[$variety_id];
+                                    if(isset($varieties_unit_price_per_kg[$variety_id])){
+                                        if($result->sales_at>$start_date)
+                                        {
+                                            $dealers_data[$result->dealer_id]['sales_gross']+=(($quantity*$pack_size_value/1000)*$varieties_unit_price_per_kg[$variety_id]);
                                         }
-                                        $response['sales_targets'][$variety_id]['dealers']=[];
-                                    }
-                                    if(isset($response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]))
-                                    {
-                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['quantity_sales_gross']+=($quantity*$pack_size_value/1000);//in kg
-                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['amount_sales_gross']+=(($quantity*$pack_size_value/1000)*$response['sales_targets'][$variety_id]['unit_price']);
-                                    }
-                                    else{
-                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]=[];
-                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['quantity_target']=0;
-                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['amount_target']=0;
-                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['quantity_sales_gross']=($quantity*$pack_size_value/1000);//in kg
-                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['amount_sales_gross']=(($quantity*$pack_size_value/1000)*$response['sales_targets'][$variety_id]['unit_price']);
-                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['quantity_sales_cancel']=0;
-                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['amount_sales_cancel']=0;
+                                        else{
+                                            $dealers_data[$result->dealer_id]['opening_balance']-=(($quantity*$pack_size_value/1000)*$varieties_unit_price_per_kg[$variety_id]);
+                                        }
                                     }
                                 }
                             }
@@ -246,34 +227,16 @@ class DealerSalesStatementSummaryReportController extends RootController
             //sales end
 
             //sales cancel start
-
             $query=DB::table(TABLE_DEALERS_SALES_RETURN.' as ds');
             $query->select('ds.*');
-            $query->join(TABLE_DEALERS.' as dealers', 'dealers.id', '=', 'ds.dealer_id');
-            $query->join(TABLE_DISTRIBUTORS.' as d', 'd.id', '=', 'dealers.distributor_id');
-            $query->join(TABLE_LOCATION_TERRITORIES.' as territories', 'territories.id', '=', 'd.territory_id');
-            $query->join(TABLE_LOCATION_AREAS.' as areas', 'areas.id', '=', 'territories.area_id');
 
-            $query->where('ds.sales_return_at','>=',$start_date);
+           // $query->where('ds.sales_return_at','>=',$start_date);
             $query->where('ds.sales_return_at','<',$end_date);
             $query->where('ds.status', '=', 'Approved');
-            if($options['part_id']>0){
-                $query->where('areas.part_id','=',$options['part_id']);
-                if($options['area_id']>0){
-                    $query->where('areas.id','=',$options['area_id']);
-                    if($options['territory_id']>0){
-                        $query->where('territories.id','=',$options['territory_id']);
-                        if($options['distributor_id']>0){
-                            $query->where('d.id','=',$options['distributor_id']);
-                            if($options['dealer_id']>0){
-                                $query->where('dealers.id','=',$options['dealer_id']);
-                            }
-                        }
-                    }
-                }
-            }
 
+            $query->whereIn('ds.dealer_id',$dealers_ids);//if array is empty it produces where 0=1
             $results=$query->get();
+
             foreach ($results as $result){
                 if($result){
                     if($result->pack_sizes){
@@ -283,25 +246,14 @@ class DealerSalesStatementSummaryReportController extends RootController
                                 if(isset($pack_sizes[$pack_size_id])) {
                                     $variety_id=$pack_sizes[$pack_size_id]->variety_id;
                                     $pack_size_value=$pack_sizes[$pack_size_id]->value;
-                                    if (!isset($response['sales_targets'][$variety_id])) {
-                                        $response['sales_targets'][$variety_id] = [];
-                                        $response['sales_targets'][$variety_id]['unit_price'] = 0;
-                                        if (isset($varieties_unit_price_per_kg[$variety_id])) {
-                                            $response['sales_targets'][$variety_id]['unit_price'] = $varieties_unit_price_per_kg[$variety_id];
+                                    if(isset($varieties_unit_price_per_kg[$variety_id])){
+                                        if($result->sales_at>$start_date)
+                                        {
+                                            $dealers_data[$result->dealer_id]['sales_canceled']+=(($quantity*$pack_size_value/1000)*$varieties_unit_price_per_kg[$variety_id]);
                                         }
-                                        $response['sales_targets'][$variety_id]['dealers'] = [];
-                                    }
-                                    if (isset($response['sales_targets'][$variety_id]['dealers'][$result->dealer_id])) {
-                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['quantity_sales_cancel'] += ($quantity*$pack_size_value/1000);//in kg
-                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['amount_sales_cancel'] += (($quantity*$pack_size_value/1000) * $response['sales_targets'][$variety_id]['unit_price']);
-                                    } else {
-                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id] = [];
-                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['quantity_target'] = 0;
-                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['amount_target'] = 0;
-                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['quantity_sales_gross'] = 0;
-                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['amount_sales_gross'] = 0;
-                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['quantity_sales_cancel'] = ($quantity*$pack_size_value/1000);
-                                        $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['amount_sales_cancel'] = (($quantity*$pack_size_value/1000) * $response['sales_targets'][$variety_id]['unit_price']);
+                                        else{
+                                            $dealers_data[$result->dealer_id]['opening_balance']+=(($quantity*$pack_size_value/1000)*$varieties_unit_price_per_kg[$variety_id]);
+                                        }
                                     }
                                 }
                             }
@@ -309,75 +261,36 @@ class DealerSalesStatementSummaryReportController extends RootController
                     }
                 }
             }
-
             //sales cancel end
-            //Target fiscal year start
 
-            $query=DB::table(TABLE_DEALERS_TARGETS.' as ds');
+            //payment start
+            $query=DB::table(TABLE_DEALERS_PAYMENT.' as ds');
             $query->select('ds.*');
-            $query->join(TABLE_DEALERS.' as dealers', 'dealers.id', '=', 'ds.dealer_id');
-            $query->join(TABLE_DISTRIBUTORS.' as d', 'd.id', '=', 'dealers.distributor_id');
-            $query->join(TABLE_LOCATION_TERRITORIES.' as territories', 'territories.id', '=', 'd.territory_id');
-            $query->join(TABLE_LOCATION_AREAS.' as areas', 'areas.id', '=', 'territories.area_id');
 
+            // $query->where('ds.sales_return_at','>=',$start_date);
+            $query->where('ds.payment_at','<',$end_date);
+            $query->where('ds.status', '=', 'Approved');
 
-            $query->where('ds.fiscal_year','=',$options['fiscal_year']);
-            $query->where('ds.status', '=', SYSTEM_STATUS_ACTIVE);
-            if($options['part_id']>0){
-                $query->where('areas.part_id','=',$options['part_id']);
-                if($options['area_id']>0){
-                    $query->where('areas.id','=',$options['area_id']);
-                    if($options['territory_id']>0){
-                        $query->where('territories.id','=',$options['territory_id']);
-                        if($options['distributor_id']>0){
-                            $query->where('d.id','=',$options['distributor_id']);
-                            if($options['dealer_id']>0){
-                                $query->where('dealers.id','=',$options['dealer_id']);
-                            }
-                        }
-                    }
-                }
-            }
-
+            $query->whereIn('ds.dealer_id',$dealers_ids);//if array is empty it produces where 0=1
             $results=$query->get();
 
             foreach ($results as $result){
-                if($result){
-                    if($result->varieties){
-                        $varieties=json_decode($result->varieties);
-                        foreach ($varieties as $variety_id=>$quantity){
-                            if(is_numeric($quantity)){
-                                if(!isset($response['sales_targets'][$variety_id])){
-                                    $response['sales_targets'][$variety_id]=[];
-                                    $response['sales_targets'][$variety_id]['unit_price']=0;
-                                    if(isset($varieties_unit_price_per_kg[$variety_id])){
-                                        $response['sales_targets'][$variety_id]['unit_price']=$varieties_unit_price_per_kg[$variety_id];
-                                    }
-                                    $response['sales_targets'][$variety_id]['dealers']=[];
-                                }
-                                if(isset($response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]))
-                                {
-                                    $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['quantity_target']=$quantity;
-                                    $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['amount_target']=$quantity*$response['sales_targets'][$variety_id]['unit_price'];
-                                }
-                                else{
-                                    $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]=[];
-                                    $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['quantity_target']=$quantity;
-                                    $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['amount_target']=$quantity*$response['sales_targets'][$variety_id]['unit_price'];
-                                    $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['quantity_sales_gross']=0;
-                                    $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['amount_sales_gross']=0;
-                                    $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['quantity_sales_cancel']=0;
-                                    $response['sales_targets'][$variety_id]['dealers'][$result->dealer_id]['amount_sales_cancel']=0;
-                                }
-                            }
-                        }
-                    }
+                if($result->payment_at>$start_date)
+                {
+                    $dealers_data[$result->dealer_id]['payment_total']+=($result->amount);
+                }
+                else{
+                    $dealers_data[$result->dealer_id]['opening_balance']+=($result->amount);
                 }
             }
+            //payment end
 
-            //Target fiscal year end
-            //$response['items']=[];
-            */
+            if(sizeof($dealers_ids)>0)
+            {
+                foreach ($dealers_ids as $dealers_id){
+                    $items[]=$dealers_data[$dealers_id];
+                }
+            }
             $response['items']=$items;
             return response()->json($response);
         } else {
