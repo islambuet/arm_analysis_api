@@ -142,6 +142,7 @@ class DealersController extends RootController
         $validation_rule['name'] = ['required'];
         $validation_rule['dealer_type_id'] = ['required','numeric'];
         $validation_rule['credit_limit'] = ['required','numeric'];
+        $validation_rule['opening_balance'] = ['required','numeric'];
         $validation_rule['distributor_id'] = ['required','numeric'];
         $validation_rule['mobile_no'] = ['nullable'];
         $validation_rule['address'] = ['nullable'];
