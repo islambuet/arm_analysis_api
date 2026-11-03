@@ -7,6 +7,7 @@ use App\Http\Controllers\RootController;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 
 class DealerSalesStatementSummaryReportController extends RootController
@@ -144,9 +145,9 @@ class DealerSalesStatementSummaryReportController extends RootController
                 $item['sales_canceled']=0;
                 $item['payment_total']=0;
                 $item['last_invoice_date']='';
-                $item['last_invoice_duration']=-1;
+                $item['last_invoice_duration']='';
                 $item['last_payment_date']='';
-                $item['last_payment_duration']=-1;
+                $item['last_payment_duration']='';
                 $dealers_data[$result->id]=$item;
                 $dealers_ids[]=$result->id;
                 //$items[]=$item;
@@ -215,7 +216,7 @@ class DealerSalesStatementSummaryReportController extends RootController
                                             $dealers_data[$result->dealer_id]['sales_gross']+=(($quantity*$pack_size_value/1000)*$varieties_unit_price_per_kg[$variety_id]);
                                         }
                                         else{
-                                            $dealers_data[$result->dealer_id]['opening_balance']-=(($quantity*$pack_size_value/1000)*$varieties_unit_price_per_kg[$variety_id]);
+                                            $dealers_data[$result->dealer_id]['opening_balance']+=(($quantity*$pack_size_value/1000)*$varieties_unit_price_per_kg[$variety_id]);
                                         }
                                     }
                                 }
@@ -252,7 +253,7 @@ class DealerSalesStatementSummaryReportController extends RootController
                                             $dealers_data[$result->dealer_id]['sales_canceled']+=(($quantity*$pack_size_value/1000)*$varieties_unit_price_per_kg[$variety_id]);
                                         }
                                         else{
-                                            $dealers_data[$result->dealer_id]['opening_balance']+=(($quantity*$pack_size_value/1000)*$varieties_unit_price_per_kg[$variety_id]);
+                                            $dealers_data[$result->dealer_id]['opening_balance']-=(($quantity*$pack_size_value/1000)*$varieties_unit_price_per_kg[$variety_id]);
                                         }
                                     }
                                 }
@@ -280,10 +281,48 @@ class DealerSalesStatementSummaryReportController extends RootController
                     $dealers_data[$result->dealer_id]['payment_total']+=($result->amount);
                 }
                 else{
-                    $dealers_data[$result->dealer_id]['opening_balance']+=($result->amount);
+                    $dealers_data[$result->dealer_id]['opening_balance']-=($result->amount);
                 }
             }
             //payment end
+
+            //last sales date
+
+            $query=DB::table(TABLE_DEALERS_SALES.' as ds');
+            $query->select(DB::raw('MAX(sales_at) as last_invoice_date'));
+            $query->addSelect('ds.dealer_id');
+
+            $query->where('ds.status', '=', 'Approved');
+
+            $query->whereIn('ds.dealer_id',$dealers_ids);//if array is empty it produces where 0=1
+            $query->groupBy('ds.dealer_id');
+            $results=$query->get();
+            foreach ($results as $result){
+                $item['last_invoice_date']='';
+                $item['last_invoice_duration']=-1;
+                $last_invoice_date=Carbon::parse($result->last_invoice_date);
+                $dealers_data[$result->dealer_id]['last_invoice_date']=$last_invoice_date->format('Y-m-d');
+                $dealers_data[$result->dealer_id]['last_invoice_duration']=floor(Carbon::now()->diffInDays($last_invoice_date,true));
+            }
+            //last sales date end
+
+            //last payment date
+            $query=DB::table(TABLE_DEALERS_PAYMENT.' as ds');
+            $query->select(DB::raw('MAX(payment_at) as last_payment_date'));
+            $query->addSelect('ds.dealer_id');
+
+            $query->where('ds.status', '=', 'Approved');
+
+            $query->whereIn('ds.dealer_id',$dealers_ids);//if array is empty it produces where 0=1
+            $query->groupBy('ds.dealer_id');
+            $results=$query->get();
+            foreach ($results as $result){
+                $last_payment_date=Carbon::parse($result->last_payment_date);
+                $dealers_data[$result->dealer_id]['last_payment_date']=$last_payment_date->format('Y-m-d');
+                $dealers_data[$result->dealer_id]['last_payment_duration']=floor(Carbon::now()->diffInDays($last_payment_date,true));
+            }
+            //last payment date end
+
 
             if(sizeof($dealers_ids)>0)
             {
